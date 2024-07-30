@@ -23,6 +23,8 @@
 
 using System;
 using System.IO;
+using S7Plus.Net.Constants;
+using S7Plus.Net.S7Variables;
 
 namespace S7Plus.Net.Helpers
 {
@@ -97,6 +99,30 @@ namespace S7Plus.Net.Helpers
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(value);
             buffer.Write(bytes, 0, bytes.Length);
             return bytes.Length;
+        }
+
+        public static int EncodeObjectQualifier(System.IO.Stream buffer)
+        {
+            int length = 0;
+
+            length += EncodeUInt32(buffer, S7Ids.ObjectQualifier);
+
+            var parentRID = new S7VariableRID(0);
+            var compositionAID = new S7VariableAID(0);
+            var keyQualifier = new S7VariableUDInt(0);
+
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, S7Ids.ParentRID);
+            length += parentRID.Serialize(buffer);
+
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, S7Ids.CompositionAID);
+            length += compositionAID.Serialize(buffer);
+
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, S7Ids.KeyQualifier);
+            length += keyQualifier.Serialize(buffer);
+
+            length += EncodeByte(buffer, 0);
+
+            return length;
         }
     }
 }
