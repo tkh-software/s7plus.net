@@ -30,46 +30,83 @@ using System.Threading.Tasks;
 
 namespace S7Plus.Net
 {
-    internal class S7Client : IDisposable
+    public class S7Client : IDisposable
     {
         private readonly TcpClient _client;
-        private readonly SslStream _stream;
+        private NetworkStream _stream;
         private readonly ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>> _requests;
         private UInt64 _sequenceNumber;
-        private Thread _receiveThread;
-        private bool _running;
+        private CancellationTokenSource _cts;
+        private Task _receiveTask;
 
         public S7Client()
         {
             _client = new TcpClient();
-            _stream = new SslStream(_client.GetStream(), false, (sender, certificate, chain, sslPolicyErrors) => true);
+
             _requests = new ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>>();
             _sequenceNumber = 0;
         }
 
-        public async Task ConnectAsync(string host, int port)
+        public void SetTimeout(TimeSpan timeout)
         {
-            if (_running)
+            if (timeout.TotalMilliseconds > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is too large");
+
+            if (timeout.TotalMilliseconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
+        }
+
+        public async Task ConnectAsync(string host, int port, TimeSpan timeout)
+        {
+            if (_stream != null && _stream.CanRead)
                 return;
 
-            await _client.ConnectAsync(host, port);
-            _stream.AuthenticateAsClient(host);
-            _running = true;
-            _receiveThread = new Thread(ReceiveLoop)
+            using (var cts = new CancellationTokenSource(timeout))
             {
-                IsBackground = true
+                try
+                {
+                    await _client.ConnectAsync(host, port).WaitAsync(cts.Token);
+                    _stream = _client.GetStream();
+                    _cts = new CancellationTokenSource();
+
+                    // Start the receive loop
+                    _receiveTask = Task.Run(() => ReceiveLoop(_cts.Token));
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new TimeoutException("The connection attempt timed out.");
+                }
+            }
+        }
+
+        private async Task SendIsoOnTcpConnectionRequestAsync()
+        {
+            // ISO-on-TCP connection request
+            byte[] isoConnectionRequest = new byte[]
+            {
+                0x03, 0x00, 0x00, 0x16, // TPKT Header
+                0x11, 0xE0, 0x00, 0x00, // COTP Connection Request
+                0x00, 0x01, 0x00, 0xC1, 0x02, 0x01, 0x00, // Source TSAP
+                0xC2, 0x02, 0x01, 0x02, // Destination TSAP
+                0x01, 0x00 // 2 bytes for TPDU size
             };
-            _receiveThread.Start();
+
+            await _stream.WriteAsync(isoConnectionRequest, 0, isoConnectionRequest.Length);
         }
 
         public async Task DisconnectAsync()
         {
-            if (!_running)
+            if (_stream == null || !_stream.CanRead)
                 return;
 
-            _running = false;
-            _receiveThread.Join();
-            await _stream.FlushAsync();
+            _cts.Cancel();
+            try
+            {
+                await _receiveTask;
+            }
+            catch (OperationCanceledException) { }
+
+            _stream.Close();
             _client.Close();
             _requests.Clear();
         }
@@ -88,30 +125,35 @@ namespace S7Plus.Net
             return await tcs.Task;
         }
 
-        private void ReceiveLoop()
+        private async Task ReceiveLoop(CancellationToken token)
         {
             try
             {
-                while (_running)
+                while (!token.IsCancellationRequested)
                 {
-                    var header = new byte[7];
-                    _stream.Read(header, 0, header.Length);
-
-                    var length = (header[5] << 8) | header[6];
-                    var buffer = new byte[length - 7];
-                    _stream.Read(buffer, 0, buffer.Length);
-
-                    var sequenceNumber = BitConverter.ToUInt64(buffer, 0);
-
-                    if (_requests.TryRemove(sequenceNumber, out var tcs))
+                    if (_stream.DataAvailable)
                     {
-                        var response = new byte[buffer.Length - 8];
-                        Array.Copy(buffer, 8, response, 0, response.Length);
-                        tcs.SetResult(response);
+                        var header = new byte[7];
+                        await _stream.ReadAsync(header, 0, header.Length, token);
+
+                        var length = (header[5] << 8) | header[6];
+                        var buffer = new byte[length - 7];
+                        await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+
+                        var sequenceNumber = BitConverter.ToUInt64(buffer, 0);
+
+                        if (_requests.TryRemove(sequenceNumber, out var tcs))
+                        {
+                            var response = new byte[buffer.Length - 8];
+                            Array.Copy(buffer, 8, response, 0, response.Length);
+                            tcs.SetResult(response);
+                        }
                     }
+
+                    await Task.Delay(TimeSpan.FromMicroseconds(10), token);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 Console.WriteLine($"ReceiveLoop exception: {ex.Message}");
             }
