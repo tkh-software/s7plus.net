@@ -54,6 +54,9 @@ namespace S7Plus.Net.S7Variables
 
         public void AddMember(UInt32 id, S7VariableBase member)
         {
+            if (_members.ContainsKey(id))
+                _members.Remove(id);
+
             _members.Add(id, member);
         }
 

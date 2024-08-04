@@ -21,12 +21,29 @@
  /****************************************************************************/
 #endregion
 
+using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace S7Plus.Net
 {
     public class S7Driver
     {
+        private readonly S7Client _client = new S7Client();
 
+        public void SetTimeout(TimeSpan timeout)
+        {
+            _client.SetTimeout(timeout);
+        }
+
+        public Task Connect(string host, int port)
+        {
+            return _client.Connect(host, port, TimeSpan.FromSeconds(5));
+        }
+
+        public Task Disconnect()
+        {
+            return _client.Disconnect();
+        }
     }
 }

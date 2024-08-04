@@ -101,7 +101,7 @@ namespace S7Plus.Net.Helpers
             return bytes.Length;
         }
 
-        public static int EncodeObjectQualifier(System.IO.Stream buffer)
+        public static int EncodeObjectQualifier(Stream buffer)
         {
             int length = 0;
 

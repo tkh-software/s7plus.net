@@ -30,41 +30,30 @@ using S7Plus.Net.Models;
 
 namespace S7Plus.Net.Requests
 {
-    public class GetMultiVariablesRequest : IS7Request
+    public class GetMultiVariablesRequest : S7RequestBase
     {
         private const byte TRANSPORT_FLAGS = 0x34;
         private const UInt32 LINK_ID = 0;
 
         private readonly List<IS7Address> _addresses = new List<IS7Address>();
 
-        public UInt32 SessionId { get; set; }
+        public override UInt16 FunctionCode => Functioncode.GetMultiVariables;
 
-        public byte ProtocolVersion { get; set; }
-
-        public UInt16 SequenceNumber { get; set; }
-
-        public UInt32 IntegrityId { get; set; }
-
-        public bool WithIntegrityId { get; set; }
-
-        public UInt16 FunctionCode => Functioncode.GetMultiVariables;
-
-        public int Serialize(Stream buffer)
+        public GetMultiVariablesRequest(byte protocolVersion, List<IS7Address> addresses) : base(protocolVersion)
         {
-            int length = 0;
-            UInt32 fieldCount = 0;
-            length += S7ValueEncoder.EncodeByte(buffer, OpCode.Request);
-            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
-            length += S7ValueEncoder.EncodeUInt16(buffer, FunctionCode);
-            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
-            length += S7ValueEncoder.EncodeUInt16(buffer, SequenceNumber);
-            length += S7ValueEncoder.EncodeUInt32(buffer, SessionId);
-            length += S7ValueEncoder.EncodeByte(buffer, TRANSPORT_FLAGS);
+            _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
+            WithIntegrityId = true;
+        }
 
-            // Request
+        public override int Serialize(Stream buffer)
+        {
+            int length = base.Serialize(buffer);
+
+            length += S7ValueEncoder.EncodeByte(buffer, TRANSPORT_FLAGS);
             length += S7ValueEncoder.EncodeUInt32(buffer, LINK_ID);
             length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (UInt32)_addresses.Count);
 
+            UInt32 fieldCount = 0;
             foreach (IS7Address adr in _addresses)
             {
                 fieldCount += adr.FieldCount;

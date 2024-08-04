@@ -23,23 +23,41 @@
 
 using System;
 using System.IO;
+using S7Plus.Net.Constants;
+using S7Plus.Net.Helpers;
 
 namespace S7Plus.Net.Requests
 {
-    public interface IS7Request
+    public abstract class S7RequestBase : IS7Request
     {
-        int Serialize(Stream buffer);
+        public UInt32 SessionId { get; set; }
 
-        UInt32 SessionId { get; set; }
+        public byte ProtocolVersion { get; }
 
-        byte ProtocolVersion { get; }
+        public UInt16 SequenceNumber { get; set; }
 
-        UInt16 FunctionCode { get; }
+        public UInt32 IntegrityId { get; set; }
 
-        UInt16 SequenceNumber { get; set; }
+        public bool WithIntegrityId { get; protected set; }
 
-        UInt32 IntegrityId { get; set; }
+        public abstract UInt16 FunctionCode { get; }
 
-        bool WithIntegrityId { get; }
+        public S7RequestBase(byte protocolVersion)
+        {
+            ProtocolVersion = protocolVersion;
+        }
+
+        public virtual int Serialize(Stream buffer)
+        {
+            int length = 0;
+            length += S7ValueEncoder.EncodeByte(buffer, OpCode.Request);
+            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
+            length += S7ValueEncoder.EncodeUInt16(buffer, FunctionCode);
+            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
+            length += S7ValueEncoder.EncodeUInt16(buffer, SequenceNumber);
+            length += S7ValueEncoder.EncodeUInt32(buffer, SessionId);
+
+            return length;
+        }
     }
 }

@@ -27,8 +27,6 @@ namespace S7Plus.Net.Responses
 {
     public interface IS7Response
     {
-        byte ProtocolVersion { get; }
-
         UInt16 FunctionCode { get; }
 
         UInt16 SequenceNumber { get; }

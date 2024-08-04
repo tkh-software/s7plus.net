@@ -21,44 +21,44 @@
  /****************************************************************************/
 #endregion
 
-global using S7VariableUDIntArray = S7Plus.Net.S7Variables.S7VariableArray<S7Plus.Net.S7Variables.S7VariableUDInt, System.UInt32>;
-
 using System;
 using System.IO;
+using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
+using S7Plus.Net.S7Variables;
 
-namespace S7Plus.Net.S7Variables
+namespace S7Plus.Net.Requests
 {
-    public class S7VariableUDInt : S7VariableBase
+    public class CreateObjectRequest : S7RequestBase
     {
-        public UInt32 Value { get; private set; }
+        private const byte TRANSPORT_FLAGS = 0x36;
 
-        public S7VariableUDInt() : this(default, 0)
-        {
-        }
+        public override UInt16 FunctionCode => Functioncode.CreateObject;
+        public UInt32 RequestId { get; set; }
+        public S7VariableBase RequestValue { get; set; }
+        public S7Object RequestObject { get; set; }
 
-        public S7VariableUDInt(UInt32 value) : this(value, 0)
+        public CreateObjectRequest(byte protocolVersion, bool withIntegrityId) : base(protocolVersion)
         {
-        }
-
-        public S7VariableUDInt(UInt32 value, byte flags)
-        {
-            Datatype = Constants.Datatype.UDInt;
-            _datatypeFlags = flags;
-            Value = value;
+            WithIntegrityId = withIntegrityId;
         }
 
         public override int Serialize(Stream buffer)
         {
             int length = base.Serialize(buffer);
-            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, Value);
-            return length;
-        }
+            length += S7ValueEncoder.EncodeByte(buffer, TRANSPORT_FLAGS);
 
-        public static S7VariableUDInt Deserialize(Stream buffer, byte flags, bool disableVlq)
-        {
-            UInt32 value = disableVlq ? S7ValueDecoder.DecodeUInt32(buffer) : S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
-            return new S7VariableUDInt(value, flags);
+            length += S7ValueEncoder.EncodeUInt32(buffer, RequestId);
+            length += RequestValue.Serialize(buffer);
+            length += S7ValueEncoder.EncodeUInt32(buffer, 0); // placeholder
+
+            if (WithIntegrityId)
+                length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, IntegrityId);
+
+            length += RequestObject.Serialize(buffer);
+            length += S7ValueEncoder.EncodeUInt32(buffer, 0); // placeholder
+
+            return length;
         }
     }
 }

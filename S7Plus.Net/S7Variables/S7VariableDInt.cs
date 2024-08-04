@@ -51,7 +51,7 @@ namespace S7Plus.Net.S7Variables
         public override int Serialize(Stream buffer)
         {
             int length = base.Serialize(buffer);
-            length += S7ValueEncoder.EncodeInt32(buffer, Value);
+            length += S7VlqValueEncoder.EncodeInt32Vlq(buffer, Value);
             return length;
         }
 

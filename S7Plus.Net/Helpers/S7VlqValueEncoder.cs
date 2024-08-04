@@ -28,13 +28,13 @@ namespace S7Plus.Net.Helpers
 {
     public static class S7VlqValueEncoder
     {
-        private static int EncodeVlq(Stream buffer, ulong value)
+        public static int EncodeUInt32Vlq(Stream buffer, UInt32 value)
         {
-            byte[] bytes = new byte[10]; // Maximum 10 bytes for 64-bit VLQ
+            byte[] bytes = new byte[5];
             int i, j;
-            for (i = 9; i > 0; i--)
+            for (i = 4; i > 0; i--)
             {
-                if ((value & (0x7fUL << (i * 7))) > 0)
+                if ((value & (0x7f << (i * 7))) > 0)
                 {
                     break;
                 }
@@ -48,57 +48,131 @@ namespace S7Plus.Net.Helpers
             return i + 1;
         }
 
-        private static int EncodeSignedVlq(Stream buffer, long value, int maxBytes)
+        public static int EncodeInt32Vlq(Stream buffer, Int32 value)
         {
-            byte[] b = new byte[maxBytes];
-            ulong abs_v;
-            if (value == long.MinValue) // Handle this, otherwise Math.Abs() will fail
-            {
-                abs_v = (ulong)(1L << (maxBytes * 7 - 1));
-            }
-            else
-            {
-                abs_v = (ulong)Math.Abs(value);
-            }
-
-            b[0] = (byte)(value & 0x7f);
+            byte[] bytes = new byte[5];
+            uint absValue = (value == int.MinValue) ? (uint)int.MaxValue + 1 : (uint)Math.Abs(value);
+            bytes[0] = (byte)(value & 0x7f);
             int length = 1;
-            for (int i = 1; i < maxBytes; i++)
+            for (int i = 1; i < 5; i++)
             {
-                if (abs_v >= 0x40)
+                if (absValue >= 0x40)
                 {
                     length++;
-                    abs_v >>= 7;
+                    absValue >>= 7;
                     value >>= 7;
-                    b[i] = (byte)((value & 0x7f) + 0x80);
+                    bytes[i] = (byte)((value & 0x7f) + 0x80);
                 }
                 else
                 {
                     break;
                 }
             }
-            buffer.Write(b, 0, length);
+
+            for (int i = length - 1; i >= 0; i--)
+            {
+                buffer.Write(bytes, i, 1);
+            }
             return length;
-        }
-
-        public static int EncodeUInt32Vlq(Stream buffer, UInt32 value)
-        {
-            return EncodeVlq(buffer, value);
-        }
-
-        public static int EncodeInt32Vlq(Stream buffer, Int32 value)
-        {
-            return EncodeSignedVlq(buffer, value, 5);
         }
 
         public static int EncodeUInt64Vlq(Stream buffer, UInt64 value)
         {
-            return EncodeVlq(buffer, value);
+            byte[] bytes = new byte[9];
+            bool special = value > 0x00ffffffffffffff;
+            if (special)
+            {
+                bytes[0] = (byte)(value & 0xff);
+            }
+            else
+            {
+                bytes[0] = (byte)(value & 0x7f);
+            }
+
+            int length = 1;
+            for (int i = 1; i < 9; i++)
+            {
+                if (value >= 0x80)
+                {
+                    length++;
+                    if (i == 1 && special)
+                    {
+                        value >>= 8;
+                    }
+                    else
+                    {
+                        value >>= 7;
+                    }
+                    bytes[i] = (byte)((value & 0x7f) + 0x80);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (special && length == 8)
+            {
+                length++;
+                bytes[8] = 0x80;
+            }
+
+            for (int i = length - 1; i >= 0; i--)
+            {
+                buffer.Write(bytes, i, 1);
+            }
+            return length;
         }
 
         public static int EncodeInt64Vlq(Stream buffer, Int64 value)
         {
-            return EncodeSignedVlq(buffer, value, 10);
+            byte[] bytes = new byte[9];
+            UInt64 absValue = (value == Int64.MinValue) ? (UInt64)Int64.MaxValue + 1 : (UInt64)Math.Abs(value);
+            bool special = absValue > 0x007fffffffffffff;
+            if (special)
+            {
+                bytes[0] = (byte)(value & 0xff);
+            }
+            else
+            {
+                bytes[0] = (byte)(value & 0x7f);
+            }
+
+            int length = 1;
+            for (int i = 1; i < 9; i++)
+            {
+                if (absValue >= 0x40)
+                {
+                    length++;
+                    if (i == 1 && special)
+                    {
+                        absValue >>= 8;
+                        value >>= 8;
+                    }
+                    else
+                    {
+                        absValue >>= 7;
+                        value >>= 7;
+                    }
+                    bytes[i] = (byte)((value & 0x7f) + 0x80);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (special && length == 8)
+            {
+                length++;
+                bytes[8] = (value >= 0) ? (byte)0x80 : (byte)0xff;
+            }
+
+            for (int i = length - 1; i >= 0; i--)
+            {
+                buffer.Write(bytes, i, 1);
+            }
+            return length;
         }
     }
 }

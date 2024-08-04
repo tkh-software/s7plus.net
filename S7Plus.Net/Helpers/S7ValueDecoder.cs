@@ -73,6 +73,13 @@ namespace S7Plus.Net.Helpers
             return (Int64)Decode(buffer, 8);
         }
 
+        public static UInt32 DecodeUInt32LE(Stream buffer)
+        {
+            byte[] bytes = new byte[4];
+            buffer.Read(bytes, 0, 4);
+            return BitConverter.ToUInt32(bytes, 0);
+        }
+
         public static float DecodeFloat(Stream buffer)
         {
             byte[] bytes = new byte[4];

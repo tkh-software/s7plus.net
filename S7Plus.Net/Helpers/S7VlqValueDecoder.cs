@@ -28,59 +28,117 @@ namespace S7Plus.Net.Helpers
 {
     public static class S7VlqValueDecoder
     {
-        private static ulong DecodeUnsignedVlq(Stream buffer)
+        public static UInt32 DecodeUInt32Vlq(Stream buffer)
         {
-            ulong value = 0;
-            byte b;
-            int shift = 0;
-            do
-            {
-                b = (byte)buffer.ReadByte();
-                value |= (ulong)(b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-            return value;
-        }
+            UInt32 value = 0;
 
-        private static long DecodeSignedVlq(Stream buffer, int maxBytes)
-        {
-            long value = 0;
-            byte b;
-            int shift = 0;
-            do
+            for (int counter = 1; counter <= 5; counter++)
             {
-                b = (byte)buffer.ReadByte();
-                value |= (long)(b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-
-            // Sign extension if the sign bit is set
-            if (shift < maxBytes * 7 && (b & 0x40) != 0)
-            {
-                value |= -(1L << shift);
+                byte octet = (byte)buffer.ReadByte();
+                value <<= 7;
+                byte cont = (byte)(octet & 0x80);
+                octet &= 0x7f;
+                value += octet;
+                if (cont == 0)
+                {
+                    break;
+                }
             }
 
             return value;
         }
 
-        public static UInt32 DecodeUInt32Vlq(Stream buffer)
-        {
-            return (UInt32)DecodeUnsignedVlq(buffer);
-        }
-
         public static Int32 DecodeInt32Vlq(Stream buffer)
         {
-            return (Int32)DecodeSignedVlq(buffer, 5);
+            Int32 value = 0;
+
+            for (int counter = 1; counter <= 5; counter++)
+            {
+                byte octet = (byte)buffer.ReadByte();
+
+                if ((counter == 1) && ((octet & 0x40) != 0))
+                {
+                    octet &= 0xbf;
+                    value = -64;
+                }
+                else
+                {
+                    value <<= 7;
+                }
+
+                byte cont = (byte)(octet & 0x80);
+                octet &= 0x7f;
+                value += octet;
+
+                if (cont == 0)
+                    break;
+            }
+
+            return value;
         }
 
         public static UInt64 DecodeUInt64Vlq(Stream buffer)
         {
-            return DecodeUnsignedVlq(buffer);
+            UInt64 value = 0;
+            byte cont = 0;
+            for (int counter = 1; counter <= 8; counter++)
+            {
+                byte octet = (byte)buffer.ReadByte();
+                value <<= 7;
+                cont = (byte)(octet & 0x80);
+                octet &= 0x7f;
+                value += octet;
+
+                if (cont == 0)
+                    break;
+            }
+
+            if (cont > 0)
+            {
+                byte octet = (byte)buffer.ReadByte();
+                value <<= 8;
+                value += octet;
+            }
+
+            return value;
         }
 
         public static Int64 DecodeInt64Vlq(Stream buffer)
         {
-            return DecodeSignedVlq(buffer, 10);
+            Int64 value = 0;
+            byte cont = 0;
+
+            for (int counter = 1; counter <= 8; counter++)
+            {
+                byte octet = (byte)buffer.ReadByte();
+
+                if ((counter == 1) && ((octet & 0x40) != 0))
+                {
+                    octet &= 0xbf;
+                    value = -64;
+                }
+                else
+                {
+                    value <<= 7;
+                }
+                cont = (byte)(octet & 0x80);
+                octet &= 0x7f;
+                value += octet;
+                if (cont == 0)
+                {
+                    break;
+                }
+            }
+
+            if (cont > 0)
+            {
+                byte octet = (byte)buffer.ReadByte();
+
+                value <<= 8;
+                value += octet;
+            }
+
+            return value;
         }
     }
 }
