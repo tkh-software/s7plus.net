@@ -28,34 +28,23 @@ using S7Plus.Net.Helpers;
 
 namespace S7Plus.Net.Requests
 {
-    public abstract class S7RequestBase : IS7Request
+    public class InitSslRequest : S7RequestBase
     {
-        public UInt32 SessionId { get; set; }
+        private const byte TRANSPORT_FLAGS = 0x30;
 
-        public byte ProtocolVersion { get; }
+        public override UInt16 FunctionCode => Functioncode.InitSsl;
 
-        public UInt16 SequenceNumber { get; set; }
-
-        public UInt32 IntegrityId { get; set; }
-
-        public bool WithIntegrityId { get; set; }
-
-        public abstract UInt16 FunctionCode { get; }
-
-        public S7RequestBase(byte protocolVersion)
+        public InitSslRequest(byte protocolVersion) : base(protocolVersion)
         {
-            ProtocolVersion = protocolVersion;
+            WithIntegrityId = false;
         }
 
-        public virtual int Serialize(Stream buffer)
+        public override int Serialize(Stream buffer)
         {
-            int length = 0;
-            length += S7ValueEncoder.EncodeByte(buffer, OpCode.Request);
-            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
-            length += S7ValueEncoder.EncodeUInt16(buffer, FunctionCode);
-            length += S7ValueEncoder.EncodeUInt16(buffer, 0);
-            length += S7ValueEncoder.EncodeUInt16(buffer, SequenceNumber);
-            length += S7ValueEncoder.EncodeUInt32(buffer, SessionId);
+            int length = base.Serialize(buffer);
+
+            length += S7ValueEncoder.EncodeByte(buffer, TRANSPORT_FLAGS);
+            length += S7ValueEncoder.EncodeUInt32(buffer, 0); // placeholder
 
             return length;
         }

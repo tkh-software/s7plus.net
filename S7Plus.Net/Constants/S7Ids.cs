@@ -75,6 +75,8 @@ namespace S7Plus.Net.Constants
         public const int ParentRID = 1257;
         public const int CompositionAID = 1258;
         public const int KeyQualifier = 1259;
+        public const int EffectiveProtectionLevel = 1842;
+        public const int ActiveProtectionLevel = 1843;
         public const int CPUexecUnitOperatingStateReq = 2167;
         public const int PLCProgramClassRid = 2520;
         public const int BlockNumber = 2521;

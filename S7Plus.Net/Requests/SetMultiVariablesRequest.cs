@@ -53,6 +53,7 @@ namespace S7Plus.Net.Requests
             _objectId = objectId;
             _varIds = varIds ?? throw new ArgumentNullException(nameof(varIds));
             _values = values ?? throw new ArgumentNullException(nameof(values));
+            WithIntegrityId = true;
         }
 
         public override int Serialize(Stream buffer)

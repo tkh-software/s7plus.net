@@ -44,7 +44,7 @@ namespace S7Plus.Net
         private TcpClient _client;
         private CotpNetworkStream _stream;
         private readonly ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>> _requests;
-        private UInt16 _sequenceNumber;
+        private UInt16 _sequenceNumber = 0;
         private UInt32 _integrityId = 0;
         private UInt32 _integrityIdSet = 0;
         private CancellationTokenSource _cts;
@@ -61,7 +61,6 @@ namespace S7Plus.Net
         public S7Client(ILogger<S7Client> logger = null)
         {
             _requests = new ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>>();
-            _sequenceNumber = 0;
             _logger = logger ?? new NullLogger<S7Client>();
         }
 
@@ -96,7 +95,7 @@ namespace S7Plus.Net
                 {
                     _client = new TcpClient();
                     await _client.ConnectAsync(_host, _port).WaitAsync(cts.Token);
-                    _stream = new CotpNetworkStream(_client.GetStream());
+                    _stream = new CotpNetworkStream(_client.GetStream(), _host);
                     _cts = new CancellationTokenSource();
 
                     int srcTsap = ((ushort)0x0600) & 0x0000FFFF;
@@ -108,6 +107,7 @@ namespace S7Plus.Net
                     _receiveTask = Task.Run(() => ReceiveLoop(_cts.Token));
 
                     _logger.LogDebug("Initializing S7 session...");
+                    //await InitSslSession();
                     await InitializeS7Session();
 
                     _logger.LogInformation("Connected successfully with session ID {0} and session ID2 {1}", _sessionId, _sessionId2);
@@ -131,7 +131,7 @@ namespace S7Plus.Net
 
             MemoryStream writeBuffer = new MemoryStream();
             request.Serialize(writeBuffer);
-            var response = await SendInternal(writeBuffer.ToArray(), 0, ProtocolVersion.V1);
+            var response = await Send(request);
 
             Stream buffer = new MemoryStream(response);
             CreateObjectResponse objResponse = CreateObjectResponse.Deserialize(buffer);
@@ -150,12 +150,47 @@ namespace S7Plus.Net
 
             SetMultiVariablesRequest setupSessionReq = new SetMultiVariablesRequest(
                 ProtocolVersion.V2, _sessionId, [S7Ids.ServerSessionVersion], [objResponse.Object.Attributes[S7Ids.ServerSessionVersion]]);
+            setupSessionReq.WithIntegrityId = false;
 
             response = await Send(setupSessionReq);
             buffer = new MemoryStream(response);
             SetMultiVariablesResponse setupSessionResp = SetMultiVariablesResponse.Deserialize(buffer);
             if (setupSessionResp.ErrorValues.Count > 0)
                 throw new Exception("Failed to initialize S7 session. Error setting session version.");
+
+            GetVarSubStreamedRequest getAccessLevel = new GetVarSubStreamedRequest(ProtocolVersion.V2, _sessionId, S7Ids.EffectiveProtectionLevel);
+            response = await Send(getAccessLevel);
+
+            buffer = new MemoryStream(response);
+            GetVarSubStreamedResponse getAccessLevelResp = GetVarSubStreamedResponse.Deserialize(buffer);
+
+            if (getAccessLevelResp.Value is S7VariableUDInt accessLevel)
+            {
+                if (accessLevel.Value >= AccessLevel.NoAccess)
+                    throw new Exception("Failed to initialize S7 session. Access level not sufficient.");
+
+                _logger.LogDebug("Access level: {0}", accessLevel.Value);
+            }
+            else
+            {
+                throw new Exception("Failed to initialize S7 session. Access level not found.");
+            }
+        }
+
+        private async Task InitSslSession()
+        {
+            InitSslRequest initSslRequest = new InitSslRequest(ProtocolVersion.V1);
+            MemoryStream initSslBuffer = new MemoryStream();
+            initSslRequest.Serialize(initSslBuffer);
+            var initSslResponse = await SendInternal(initSslBuffer.ToArray(), 0, ProtocolVersion.V1);
+
+            Stream buffer = new MemoryStream(initSslResponse);
+            InitSslResponse initSslResp = InitSslResponse.Deserialize(buffer);
+
+            if (initSslResp.Error)
+                throw new Exception("Failed to initialize SSL session.");
+
+            _stream.EnableSsl();
         }
 
         private async Task Reconnect()
@@ -363,15 +398,17 @@ namespace S7Plus.Net
                 case Functioncode.SetVarSubStreamed:
                 case Functioncode.DeleteObject:
                 case Functioncode.CreateObject:
-                    _integrityIdSet++;
                     if (_integrityIdSet == UInt32.MaxValue)
-                        _integrityIdSet = 1;
+                        _integrityIdSet = 0;
+                    else
+                        _integrityIdSet++;
 
                     return _integrityIdSet;
                 default:
-                    _integrityId++;
                     if (_integrityId == UInt32.MaxValue)
-                        _integrityId = 1;
+                        _integrityId = 0;
+                    else
+                        _integrityId++;
 
                     return _integrityId;
             }

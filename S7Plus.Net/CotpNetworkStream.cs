@@ -24,46 +24,58 @@ using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Org.BouncyCastle.Tls;
+using Org.BouncyCastle.Tls.Crypto.Impl.BC;
 
 namespace S7Plus.Net
 {
     public class CotpNetworkStream : IDisposable
     {
         private readonly NetworkStream _networkStream;
+        private readonly string _targetHost;
+        private S7TlsClientProtocol _sslClientProtocol;
 
-        public CotpNetworkStream(NetworkStream networkStream)
+        public CotpNetworkStream(NetworkStream networkStream, string targetHost)
         {
             _networkStream = networkStream ?? throw new ArgumentNullException(nameof(networkStream));
+            _targetHost = targetHost ?? throw new ArgumentNullException(nameof(targetHost));
+        }
+
+        public void EnableSsl()
+        {
+            _sslClientProtocol = new S7TlsClientProtocol(_networkStream);
+            var tlsClient = new S7TlsClient();
+            _sslClientProtocol.Connect(tlsClient);
         }
 
         public async Task SendConnectionRequest(int sourceTsap, byte[] destinationTsap, TimeSpan timeout)
         {
             // ISO-on-TCP connection request
             byte[] isoConnRequest = {
-            	// TPKT (RFC1006 Header)
-            	0x03, // RFC 1006 ID (3) 
-            	0x00, // Reserved, always 0
-            	0x00, // High part of packet lenght (entire frame, payload and TPDU included)
-            	0x24, // Low part of packet lenght (entire frame, payload and TPDU included)
-            	// COTP (ISO 8073 Header)
-            	0x1f, // PDU Size Length
-            	0xE0, // CR - Connection Request ID
-            	0x00, // Dst Reference HI
-            	0x00, // Dst Reference LO
-            	0x00, // Src Reference HI
-            	0x01, // Src Reference LO
-            	0x00, // Class + Options Flags
-            	0xC0, // PDU Max Length ID
-            	0x01, // PDU Max Length HI
-            	0x0A, // PDU Max Length LO
-            	0xC1, // Src TSAP Identifier
-            	0x02, // Src TSAP Length (2 bytes)
-            	(byte)(sourceTsap >> 8), // Src TSAP HI
-            	(byte)(sourceTsap & 0x00FF), // Src TSAP LO
-            	0xC2, // Dst TSAP Identifier
-            	(byte)destinationTsap.Length, // Dst TSAP Length (16 bytes)
-            	// TSAP ID (String)
-            };
+            // TPKT (RFC1006 Header)
+            0x03, // RFC 1006 ID (3) 
+            0x00, // Reserved, always 0
+            0x00, // High part of packet length (entire frame, payload and TPDU included)
+            0x24, // Low part of packet length (entire frame, payload and TPDU included)
+            // COTP (ISO 8073 Header)
+            0x1f, // PDU Size Length
+            0xE0, // CR - Connection Request ID
+            0x00, // Dst Reference HI
+            0x00, // Dst Reference LO
+            0x00, // Src Reference HI
+            0x01, // Src Reference LO
+            0x00, // Class + Options Flags
+            0xC0, // PDU Max Length ID
+            0x01, // PDU Max Length HI
+            0x0A, // PDU Max Length LO
+            0xC1, // Src TSAP Identifier
+            0x02, // Src TSAP Length (2 bytes)
+            (byte)(sourceTsap >> 8), // Src TSAP HI
+            (byte)(sourceTsap & 0x00FF), // Src TSAP LO
+            0xC2, // Dst TSAP Identifier
+            (byte)destinationTsap.Length, // Dst TSAP Length (16 bytes)
+            // TSAP ID (String)
+        };
 
             byte[] isoConnectionRequest = new byte[isoConnRequest.Length + destinationTsap.Length];
             Array.Copy(isoConnRequest, isoConnectionRequest, isoConnRequest.Length);
@@ -102,16 +114,19 @@ namespace S7Plus.Net
             // COTP Data Packet
             byte[] cotpHeader = new byte[]
             {
-                0x03, 0x00, // TPKT version and reserved
-                (byte)((data.Length + 7) >> 8), (byte)((data.Length + 7) & 0xFF), // TPKT length
-                0x02, 0xF0, 0x80 // COTP header
+            0x03, 0x00, // TPKT version and reserved
+            (byte)((data.Length + 7) >> 8), (byte)((data.Length + 7) & 0xFF), // TPKT length
+            0x02, 0xF0, 0x80 // COTP header
             };
 
             byte[] packet = new byte[cotpHeader.Length + data.Length];
             Array.Copy(cotpHeader, 0, packet, 0, cotpHeader.Length);
             Array.Copy(data, 0, packet, cotpHeader.Length, data.Length);
 
-            await _networkStream.WriteAsync(packet, 0, packet.Length);
+            if (_sslClientProtocol != null)
+                await Task.Run(() => _sslClientProtocol.WriteApplicationData(packet, 0, packet.Length));
+            else
+                await _networkStream.WriteAsync(packet, 0, packet.Length);
         }
 
         public async Task<byte[]> ReceivePacket()

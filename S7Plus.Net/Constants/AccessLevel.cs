@@ -21,13 +21,15 @@
  /****************************************************************************/
 #endregion
 
+using System;
+
 namespace S7Plus.Net.Constants
 {
-    public static class Blobtype
+    public static class AccessLevel
     {
-        public const byte ValueList = 0x00;
-        public const byte DataTransfer1 = 0x02;
-        public const byte DataTransfer2 = 0x03;
-        public const byte Unknown = 0xff;
+        public const UInt32 FullAccess = 1;
+        public const UInt32 ReadAccess = 2;
+        public const UInt32 HMIAccess = 3;
+        public const UInt32 NoAccess = 4;
     }
 }
