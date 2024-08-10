@@ -20,20 +20,22 @@
  /****************************************************************************/
 #endregion
 
+using Org.BouncyCastle.Tls;
 using System;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Org.BouncyCastle.Tls;
-using Org.BouncyCastle.Tls.Crypto.Impl.BC;
 
 namespace S7Plus.Net
 {
-    public class CotpNetworkStream : IDisposable
+    public class CotpNetworkStream : Stream
     {
         private readonly NetworkStream _networkStream;
         private readonly string _targetHost;
-        private S7TlsClientProtocol _sslClientProtocol;
+        private TlsClientProtocol _sslClientProtocol;
+        private readonly MemoryStream _buffer = new MemoryStream();
 
         public CotpNetworkStream(NetworkStream networkStream, string targetHost)
         {
@@ -41,11 +43,23 @@ namespace S7Plus.Net
             _targetHost = targetHost ?? throw new ArgumentNullException(nameof(targetHost));
         }
 
+        public override bool CanRead => _networkStream.CanRead;
+        public override bool CanSeek => _networkStream.CanSeek;
+        public override bool CanWrite => _networkStream.CanWrite;
+        public override long Length => _buffer.Length;
+        public override long Position { get => _buffer.Position; set => _networkStream.Position = value; }
+
         public void EnableSsl()
         {
-            _sslClientProtocol = new S7TlsClientProtocol(_networkStream);
+            _sslClientProtocol = new TlsClientProtocol(this);
             var tlsClient = new S7TlsClient();
             _sslClientProtocol.Connect(tlsClient);
+        }
+
+        private static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            // Implement server certificate validation
+            return true;
         }
 
         public async Task SendConnectionRequest(int sourceTsap, byte[] destinationTsap, TimeSpan timeout)
@@ -82,6 +96,7 @@ namespace S7Plus.Net
             Array.Copy(destinationTsap, 0, isoConnectionRequest, isoConnRequest.Length, destinationTsap.Length);
 
             await _networkStream.WriteAsync(isoConnectionRequest, 0, isoConnectionRequest.Length);
+            await _networkStream.FlushAsync();
 
             bool connected = false;
             for (int i = 0; i < timeout.TotalMilliseconds; i++)
@@ -109,39 +124,75 @@ namespace S7Plus.Net
                 throw new TimeoutException("The connection attempt timed out.");
         }
 
-        public async Task SendPacket(byte[] data)
+        public void SendPacket(byte[] data)
         {
-            // COTP Data Packet
-            byte[] cotpHeader = new byte[]
-            {
-            0x03, 0x00, // TPKT version and reserved
-            (byte)((data.Length + 7) >> 8), (byte)((data.Length + 7) & 0xFF), // TPKT length
-            0x02, 0xF0, 0x80 // COTP header
-            };
-
-            byte[] packet = new byte[cotpHeader.Length + data.Length];
-            Array.Copy(cotpHeader, 0, packet, 0, cotpHeader.Length);
-            Array.Copy(data, 0, packet, cotpHeader.Length, data.Length);
-
             if (_sslClientProtocol != null)
-                await Task.Run(() => _sslClientProtocol.WriteApplicationData(packet, 0, packet.Length));
+                _sslClientProtocol.WriteApplicationData(data, 0, data.Length);
             else
-                await _networkStream.WriteAsync(packet, 0, packet.Length);
+                Write(data, 0, data.Length);
+
+            Flush();
         }
 
-        public async Task<byte[]> ReceivePacket()
+        public byte[] ReceivePacket()
         {
             if (!_networkStream.DataAvailable)
             {
                 return Array.Empty<byte>();
             }
 
+            byte[] buffer = new byte[1024];
+            int count = _sslClientProtocol == null ? Read(buffer, 0, buffer.Length)
+                : _sslClientProtocol.ReadApplicationData(buffer);
+
+            if(_sslClientProtocol != null)
+            {
+                byte[] data = new byte[count];
+                Array.Copy(buffer, data, count);
+                return data;
+            }
+
+            if(Length > 0)
+            {
+                byte[] data = new byte[Length];
+                Read(data, 0, data.Length);
+                
+                //append to buffer
+                byte[] result = new byte[buffer.Length + data.Length];
+                Array.Copy(buffer, 0, result, 0, buffer.Length);
+                Array.Copy(data, 0, result, buffer.Length, data.Length);
+                return result;
+            }
+
+            //resize buffer
+            Array.Resize(ref buffer, count);
+
+            return buffer;
+        }
+
+        public override void Flush()
+        {
+            _networkStream.Flush();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if(_buffer.Length > 0)
+            {
+                int read = _buffer.Read(buffer, offset, count);
+                if (_buffer.Position == _buffer.Length)
+                {
+                    _buffer.SetLength(0);
+                }
+                return read;
+            }
+
             byte[] tpktHeader = new byte[4];
-            await Read(tpktHeader);
+            _networkStream.Read(tpktHeader, 0, tpktHeader.Length);
 
             int tpktLength = (tpktHeader[2] << 8) | tpktHeader[3];
             byte[] cotpHeader = new byte[3];
-            await Read(cotpHeader);
+            _networkStream.Read(cotpHeader, 0, cotpHeader.Length);
 
             if (cotpHeader[1] != 0xF0 || cotpHeader[2] != 0x80)
             {
@@ -150,11 +201,13 @@ namespace S7Plus.Net
 
             int cotpLength = tpktLength - tpktHeader.Length - cotpHeader.Length;
             byte[] cotpData = new byte[cotpLength];
+            _buffer.Position = 0;
+            _buffer.SetLength(0);
 
             int bytesRead = 0;
             while (bytesRead < cotpLength)
             {
-                int read = await _networkStream.ReadAsync(cotpData, bytesRead, cotpLength - bytesRead);
+                int read = _networkStream.Read(cotpData, 0, cotpLength - bytesRead);
                 if (read == 0)
                 {
                     throw new IOException("Disconnected");
@@ -162,26 +215,35 @@ namespace S7Plus.Net
                 bytesRead += read;
             }
 
-            return cotpData;
+            _buffer.Write(cotpData, 0, cotpData.Length);
+            _buffer.Seek(0, SeekOrigin.Begin);
+            return Read(buffer, offset, count);
         }
 
-        private async Task Read(byte[] buffer)
+        public override long Seek(long offset, SeekOrigin origin)
         {
-            int bytesRead = 0;
-            while (bytesRead < buffer.Length)
+            return _networkStream.Seek(offset, origin);
+        }
+
+        public override void SetLength(long value)
+        {
+            _networkStream.SetLength(value);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            // Wrap the buffer in a COTP header before sending
+            byte[] cotpHeader = new byte[]
             {
-                int read = await _networkStream.ReadAsync(buffer, bytesRead, buffer.Length - bytesRead);
-                if (read == 0)
-                {
-                    throw new IOException("Disconnected");
-                }
-                bytesRead += read;
-            }
-        }
+            0x03, 0x00, 0x00, (byte)(count + 7), // COTP Header (3 bytes of COTP header + length)
+            0x02, 0xF0, 0x80,                   // COTP TPDU (indicates data packet)
+            };
 
-        public void Dispose()
-        {
-            _networkStream?.Dispose();
+            byte[] cotpWrappedMessage = new byte[cotpHeader.Length + count];
+            Array.Copy(cotpHeader, 0, cotpWrappedMessage, 0, cotpHeader.Length);
+            Array.Copy(buffer, offset, cotpWrappedMessage, cotpHeader.Length, count);
+
+            _networkStream.Write(cotpWrappedMessage, 0, cotpWrappedMessage.Length);
         }
     }
 }

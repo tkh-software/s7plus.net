@@ -107,7 +107,7 @@ namespace S7Plus.Net
                     _receiveTask = Task.Run(() => ReceiveLoop(_cts.Token));
 
                     _logger.LogDebug("Initializing S7 session...");
-                    //await InitSslSession();
+                    await InitSslSession();
                     await InitializeS7Session();
 
                     _logger.LogInformation("Connected successfully with session ID {0} and session ID2 {1}", _sessionId, _sessionId2);
@@ -315,7 +315,8 @@ namespace S7Plus.Net
                     sendLen++;
                     packet[sendLen] = 0;
                 }
-                await _stream.SendPacket(packet);
+                
+                _stream.SendPacket(packet);
             }
 
             return await tcs.Task;
@@ -332,7 +333,7 @@ namespace S7Plus.Net
                         if (_client.Client.Poll(0, SelectMode.SelectRead) && _client.Client.Available == 0)
                             throw new IOException("Connection reset.");
 
-                        byte[] buffer = await _stream.ReceivePacket();
+                        byte[] buffer = _stream.ReceivePacket();
                         if (buffer.Length == 0)
                         {
                             await Task.Delay(TimeSpan.FromMicroseconds(10), token);

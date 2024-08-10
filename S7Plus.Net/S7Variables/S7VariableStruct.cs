@@ -172,7 +172,7 @@ namespace S7Plus.Net.S7Variables
                 while (memberId > 0)
                 {
                     elem = S7VariableBase.Deserialize(buffer, disableVlq);
-                    obj.AddMember(value, elem);
+                    obj.AddMember(memberId, elem);
                     memberId = disableVlq ? S7ValueDecoder.DecodeUInt32(buffer) : S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
                 }
             }
