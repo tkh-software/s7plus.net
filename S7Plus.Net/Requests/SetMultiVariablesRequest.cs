@@ -46,6 +46,7 @@ namespace S7Plus.Net.Requests
         {
             _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
             _values = values ?? throw new ArgumentNullException(nameof(values));
+            WithIntegrityId = true;
         }
 
         public SetMultiVariablesRequest(byte protocolVersion, UInt32 objectId, List<UInt32> varIds, List<S7VariableBase> values) : base(protocolVersion)

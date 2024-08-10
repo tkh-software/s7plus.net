@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Extensions.Logging;
 using S7Plus.Net;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Models;
 using S7Plus.Net.Requests;
+using S7Plus.Net.Responses;
+using S7Plus.Net.S7Variables;
 
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
@@ -26,6 +29,17 @@ GetMultiVariablesRequest request = new GetMultiVariablesRequest(ProtocolVersion.
 });
 
 byte[] response = await client.Send(request);
+
+MemoryStream stream = new MemoryStream(response);
+
+GetMultiVariablesResponse getMultiVariablesResponse = GetMultiVariablesResponse.Deserialize(stream);
+
+SetMultiVariablesRequest setMultiVariablesRequest = new SetMultiVariablesRequest(ProtocolVersion.V2, new List<IS7Address> { new S7AbsoluteAddress(1, 9) },
+    new List<S7VariableBase>{
+        new S7VariableBool(true)
+    });
+
+response = await client.Send(setMultiVariablesRequest);
 
 Console.Read();
 await client.Disconnect();
