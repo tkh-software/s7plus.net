@@ -22,6 +22,7 @@
 #endregion
 
 using S7Plus.Net.Helpers;
+using S7Plus.Net.Models.OffsetInfos;
 using System;
 using System.IO;
 
@@ -47,7 +48,7 @@ namespace S7Plus.Net.Models
 
         public UInt32 LID { get; private set; }
         public UInt32 SymbolCrc { get; private set; }
-        public byte Softdatatype { get; private set; }
+        public byte SoftDatatype { get; private set; }
         public UInt16 AttributeFlags { get; private set; }
         public byte BitOffsetInfoFlags { get; private set; }
 
@@ -61,17 +62,24 @@ namespace S7Plus.Net.Models
         public bool BitOffsetInfoClassic => (BitOffsetInfoFlags & S7COMMP_TAGDESCR_BITOFFSETINFO_CLASSIC) != 0;
         public int BitOffsetInfoNonOptimizedBitOffset => (BitOffsetInfoFlags & S7COMMP_TAGDESCR_BITOFFSETINFO_NONOPTBITOFFSET) >> 4;
         public int BitOffsetInfoOptimizedBitOffset => BitOffsetInfoFlags & S7COMMP_TAGDESCR_BITOFFSETINFO_OPTBITOFFSET;
+        public int OffsetInfoType => (AttributeFlags & S7COMMP_TAGDESCR_ATTRIBUTE2_OFFSETINFOTYPE) >> 12;
+
+        public S7OffsetInfo OffsetInfo { get; private set; }
 
         public static S7VarType Deserialize(Stream buffer)
         {
-            return new S7VarType
+            S7VarType result = new S7VarType
             {
                 LID = S7ValueDecoder.DecodeUInt32LE(buffer),
                 SymbolCrc = S7ValueDecoder.DecodeUInt32LE(buffer),
-                Softdatatype = S7ValueDecoder.DecodeByte(buffer),
+                SoftDatatype = S7ValueDecoder.DecodeByte(buffer),
                 AttributeFlags = S7ValueDecoder.DecodeUInt16(buffer),
                 BitOffsetInfoFlags = S7ValueDecoder.DecodeByte(buffer)
             };
+
+            result.OffsetInfo = S7OffsetInfo.Deserialize(buffer, result.OffsetInfoType);
+
+            return result;
         }
     }
 }

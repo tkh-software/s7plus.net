@@ -3,6 +3,7 @@
  * S7Plus.Net
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
+ * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
  * This file is part of the S7Plus.Net project, which is based on the
  * S7CommPlusDriver project by Thomas Wiens
@@ -23,13 +24,30 @@
 using System;
 using System.IO;
 
-namespace S7Plus.Net.Models
+namespace S7Plus.Net.Models.OffsetInfos
 {
-    public interface IS7Address
+    public class S7OffsetInfoString : S7OffsetInfo, IOffsetInfo
     {
-        UInt32 AccessArea { get; }
-        UInt32 AccessSubArea { get; }
-        uint FieldCount { get; }
-        int Serialize(Stream buffer);
+        public override bool HasRelation => false;
+        public override bool IsOneDimensional => false;
+        public override bool IsMultiDimensional => false;
+
+        public UInt16 MaxLength { get; private set; }
+        public UInt16 MaxLengthPlusHeader { get; private set; }
+        public UInt32 OptimizedAddress { get; private set; }
+        public UInt32 NonOptimizedAddress { get; private set; }
+
+        public static S7OffsetInfoString Deserialize(Stream buffer)
+        {
+            S7OffsetInfoString result = new S7OffsetInfoString();
+
+            result.MaxLength = ReadUInt16LE(buffer);
+            result.MaxLengthPlusHeader = ReadUInt16LE(buffer);
+
+            result.OptimizedAddress = ReadUInt32LE(buffer);
+            result.NonOptimizedAddress = ReadUInt32LE(buffer);
+
+            return result;
+        }
     }
 }

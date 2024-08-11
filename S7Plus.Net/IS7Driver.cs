@@ -1,4 +1,4 @@
-#region License
+﻿#region License
 /******************************************************************************
  * S7Plus.Net
  * 
@@ -20,16 +20,24 @@
  /****************************************************************************/
 #endregion
 
+using Microsoft.Extensions.Logging;
+using S7Plus.Net.Requests;
+using S7Plus.Net.Responses;
 using System;
-using System.IO;
+using System.Threading.Tasks;
 
-namespace S7Plus.Net.Models
+namespace S7Plus.Net
 {
-    public interface IS7Address
+    public interface IS7Driver
     {
-        UInt32 AccessArea { get; }
-        UInt32 AccessSubArea { get; }
-        uint FieldCount { get; }
-        int Serialize(Stream buffer);
+        ILogger Logger { get; }
+
+        void SetTimeout(TimeSpan timeout);
+        Task Connect(string host, int port);
+        Task Disconnect();
+
+        Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request);
+        Task<SetMultiVariablesResponse> SetMultiVariables(SetMultiVariablesRequest request);
+        Task<ExploreResponse> Explore(ExploreRequest request);
     }
 }

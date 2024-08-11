@@ -42,7 +42,7 @@ namespace S7Plus.Net.Requests
 
         public override UInt16 FunctionCode => Functioncode.Explore;
         public UInt32 ExploreId { get; set; }
-        public UInt32 ExploreRequestId { get; set; }
+        public UInt32 ExploreRequestId { get; set; } = S7Ids.None;
         public bool ExploreChildren { get; set; }
         public bool ExploreParents { get; set; }
         public S7VariableStruct? FilterData { get; set; }

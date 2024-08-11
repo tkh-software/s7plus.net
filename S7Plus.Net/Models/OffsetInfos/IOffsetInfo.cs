@@ -3,6 +3,7 @@
  * S7Plus.Net
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
+ * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
  * This file is part of the S7Plus.Net project, which is based on the
  * S7CommPlusDriver project by Thomas Wiens
@@ -21,15 +22,16 @@
 #endregion
 
 using System;
-using System.IO;
 
-namespace S7Plus.Net.Models
+namespace S7Plus.Net.Models.OffsetInfos
 {
-    public interface IS7Address
+    public interface IOffsetInfo
     {
-        UInt32 AccessArea { get; }
-        UInt32 AccessSubArea { get; }
-        uint FieldCount { get; }
-        int Serialize(Stream buffer);
+        bool HasRelation { get; }
+        bool IsOneDimensional { get; }
+        bool IsMultiDimensional { get; }
+
+        UInt32 OptimizedAddress { get; }
+        UInt32 NonOptimizedAddress { get; }
     }
 }

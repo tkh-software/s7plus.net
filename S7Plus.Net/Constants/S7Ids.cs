@@ -28,7 +28,7 @@ namespace S7Plus.Net.Constants
         public const int None = 0;
         public const int NativeObjectsThePLCProgramRid = 3;
         public const int NativeObjectsTheCPUExecUnitRid = 52;
-        public const int NativeObjectsTheIArea_Rid = 80;
+        public const int NativeObjectsTheIAreaRid = 80;
         public const int NativeObjectsTheQAreaRid = 81;
         public const int NativeObjectsTheMAreaRid = 82;
         public const int NativeObjectsTheS7CountersRid = 83;

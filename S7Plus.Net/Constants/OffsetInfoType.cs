@@ -3,6 +3,7 @@
  * S7Plus.Net
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
+ * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
  * This file is part of the S7Plus.Net project, which is based on the
  * S7CommPlusDriver project by Thomas Wiens
@@ -20,16 +21,25 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.IO;
-
-namespace S7Plus.Net.Models
+namespace S7Plus.Net.Constants
 {
-    public interface IS7Address
+    public static class OffsetInfoType
     {
-        UInt32 AccessArea { get; }
-        UInt32 AccessSubArea { get; }
-        uint FieldCount { get; }
-        int Serialize(Stream buffer);
+        public const int FbArray = 0;
+        public const int StructElemStd = 1;
+        public const int StructElemString = 2;
+        public const int StructElemArray1Dim = 3;
+        public const int StructElemArrayMDim = 4;
+        public const int StructElemStruct = 5;
+        public const int StructElemStruct1Dim = 6;
+        public const int StructElemStructMDim = 7;
+        public const int Std = 8;
+        public const int String = 9;
+        public const int Array1Dim = 10;
+        public const int ArrayMDim = 11;
+        public const int Struct = 12;
+        public const int Struct1Dim = 13;
+        public const int StructMDim = 14;
+        public const int FbSfb = 15;
     }
 }

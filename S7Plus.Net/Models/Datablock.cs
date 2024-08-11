@@ -30,17 +30,18 @@ namespace S7Plus.Net.Models
         {
         }
 
-        public Datablock(UInt32 blockNumber, UInt32 blockRelId, UInt32 blockTiRelId, string blockName)
+        public Datablock(UInt32 blockNumber, UInt32 blockRelId, UInt32 blockTypeInfoRelId, string blockName)
         {
             BlockNumber = blockNumber;
             BlockRelId = blockRelId;
-            BlockTiRelId = blockTiRelId;
+            BlockTypeInfoRelId = blockTypeInfoRelId;
             BlockName = blockName;
         }
 
         public UInt32 BlockNumber { get; set; }
         public UInt32 BlockRelId { get; set; }
-        public UInt32 BlockTiRelId { get; set; }
+        public UInt32 BlockTypeInfoRelId { get; set; }
         public string BlockName { get; set; } = string.Empty;
+        public const UInt32 Area = 0x8a0e;
     }
 }

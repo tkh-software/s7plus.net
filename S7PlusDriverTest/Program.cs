@@ -2,6 +2,7 @@
 
 using S7Plus.Net;
 using S7Plus.Net.Constants;
+using S7Plus.Net.DriverExtensions;
 using S7Plus.Net.Models;
 using S7Plus.Net.Requests;
 using S7Plus.Net.Responses;
@@ -9,7 +10,6 @@ using S7Plus.Net.S7Variables;
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
@@ -21,7 +21,7 @@ using var loggerFactory = LoggerFactory.Create(builder =>
         });
 });
 
-S7Driver client = new S7Driver(loggerFactory.CreateLogger<S7Client>());
+IS7Driver client = new S7Driver(loggerFactory.CreateLogger<S7Client>());
 client.SetTimeout(TimeSpan.FromSeconds(5));
 await client.Connect("192.168.178.140", 102);
 Console.WriteLine("Hello World!");
@@ -38,6 +38,9 @@ SetMultiVariablesRequest setMultiVariablesRequest = new SetMultiVariablesRequest
     });
 
 SetMultiVariablesResponse setMultiResponse = await client.SetMultiVariables(setMultiVariablesRequest);
+
+List<Datablock> datablocks = await client.GetDatablocks();
+VariableInfo? variableInfo = await client.GetVariableInfoBySymbol("DB1.TEST_BOOL", datablocks);
 
 Console.Read();
 await client.Disconnect();

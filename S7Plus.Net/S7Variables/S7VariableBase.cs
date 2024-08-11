@@ -21,7 +21,6 @@
  /****************************************************************************/
 #endregion
 
-using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using System;
 using System.IO;

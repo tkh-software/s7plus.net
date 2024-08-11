@@ -44,6 +44,8 @@ namespace S7Plus.Net.Models
         }
 
         public uint FieldCount => (uint)Offsets.Count + 4;
+        public uint AccessArea => Datablock + ACCESS_AREA_OFFSET;
+        public uint AccessSubArea => ACCESS_SUBAREA;
 
         public int Serialize(Stream buffer)
         {

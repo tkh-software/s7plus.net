@@ -126,11 +126,14 @@ namespace S7Plus.Net
 
         private async Task InitializeS7Session()
         {
-            CreateObjectRequest request = new CreateObjectRequest(ProtocolVersion.V1, false);
-            request.SessionId = S7Ids.ObjectNullServerSession;
-            request.RequestId = S7Ids.ObjectServerSessionContainer;
-            request.RequestValue = new S7VariableUDInt(0);
-            request.RequestObject = new S7Object(S7Ids.GetNewRIDOnServer, S7Ids.ClassServerSession, S7Ids.None);
+            CreateObjectRequest request = new CreateObjectRequest(ProtocolVersion.V1, false)
+            {
+                RequestValue = new S7VariableUDInt(0),
+                RequestObject = new S7Object(S7Ids.GetNewRIDOnServer, S7Ids.ClassServerSession, S7Ids.None),
+                SessionId = S7Ids.ObjectNullServerSession,
+                RequestId = S7Ids.ObjectServerSessionContainer
+            };
+
             request.RequestObject.Attributes.Add(S7Ids.ServerSessionClientRID, new S7VariableRID(SESSION_CLIENT_RID));
             request.RequestObject.AddObject(new S7Object(S7Ids.GetNewRIDOnServer, S7Ids.ClassSubscriptions, S7Ids.None));
 
