@@ -25,36 +25,49 @@ using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using S7Plus.Net.S7Variables;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace S7Plus.Net.Responses
 {
-    public class GetVarSubStreamedResponse : S7ResponseBase, IS7Response
+    public class ExploreResponse : S7ResponseBase, IS7Response
     {
-        public byte ProtocolVersion { get; private set; }
-
         public UInt32 IntegrityId { get; private set; }
 
-        public bool WithIntegrityId => true;
+        public bool WithIntegrityId { get; set; } = true;
         public byte TransportFlags { get; private set; }
         public UInt64 ReturnValue { get; private set; }
-        public S7VariableBase? Value { get; private set; }
+        public UInt32 ExploreId { get; private set; }
+        public List<S7Object> Objects { get; } = new List<S7Object>();
 
-        public static GetVarSubStreamedResponse Deserialize(Stream buffer)
+        public static ExploreResponse Deserialize(Stream buffer)
         {
-            GetVarSubStreamedResponse response = new GetVarSubStreamedResponse();
+            ExploreResponse response = new ExploreResponse();
             response.DeserializeBase(buffer);
 
-            if (response.FunctionCode != Functioncode.GetVarSubStreamed)
-                throw new InvalidDataException($"Invalid function code in response to GetVarSubStreamed request: {response.FunctionCode}");
+            if (response.FunctionCode != Functioncode.Explore)
+                throw new InvalidDataException($"Invalid function code in response to ExploreResponse request: {response.FunctionCode}");
 
             response.TransportFlags = S7ValueDecoder.DecodeByte(buffer);
             response.ReturnValue = S7VlqValueDecoder.DecodeUInt64Vlq(buffer);
+            response.ExploreId = S7ValueDecoder.DecodeUInt32(buffer);
 
-            S7ValueDecoder.DecodeByte(buffer); //unknown
+            if (response.WithIntegrityId)
+                response.IntegrityId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
 
-            response.Value = S7VariableBase.Deserialize(buffer);
-            response.IntegrityId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
+            byte tagId = S7ValueDecoder.DecodeByte(buffer);
+            buffer.Seek(-1, SeekOrigin.Current);
+
+            while (tagId == ElementId.StartOfObject)
+            {
+                S7Object? obj = S7Object.Deserialize(buffer);
+
+                if (obj != null)
+                    response.Objects.Add(obj);
+
+                tagId = S7ValueDecoder.DecodeByte(buffer);
+                buffer.Seek(-1, SeekOrigin.Current);
+            }
 
             return response;
         }

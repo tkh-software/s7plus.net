@@ -3,7 +3,6 @@
  * S7Plus.Net
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
- * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
  * This file is part of the S7Plus.Net project, which is based on the
  * S7CommPlusDriver project by Thomas Wiens
@@ -22,24 +21,26 @@
 #endregion
 
 using System;
-using System.IO;
 
-namespace S7Plus.Net.Requests
+namespace S7Plus.Net.Models
 {
-    public interface IS7Request
+    public record Datablock
     {
-        int Serialize(Stream buffer);
+        public Datablock()
+        {
+        }
 
-        UInt32 SessionId { get; set; }
+        public Datablock(UInt32 blockNumber, UInt32 blockRelId, UInt32 blockTiRelId, string blockName)
+        {
+            BlockNumber = blockNumber;
+            BlockRelId = blockRelId;
+            BlockTiRelId = blockTiRelId;
+            BlockName = blockName;
+        }
 
-        byte ProtocolVersion { get; }
-
-        UInt16 FunctionCode { get; }
-
-        UInt16 SequenceNumber { get; set; }
-
-        UInt32 IntegrityId { get; set; }
-
-        bool WithIntegrityId { get; }
+        public UInt32 BlockNumber { get; set; }
+        public UInt32 BlockRelId { get; set; }
+        public UInt32 BlockTiRelId { get; set; }
+        public string BlockName { get; set; } = string.Empty;
     }
 }

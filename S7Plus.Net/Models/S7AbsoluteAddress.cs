@@ -20,11 +20,11 @@
  /****************************************************************************/
 #endregion
 
+using S7Plus.Net.Constants;
+using S7Plus.Net.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using S7Plus.Net.Constants;
-using S7Plus.Net.Helpers;
 
 namespace S7Plus.Net.Models
 {

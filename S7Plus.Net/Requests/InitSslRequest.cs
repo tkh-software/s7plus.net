@@ -21,10 +21,10 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
+using System;
+using System.IO;
 
 namespace S7Plus.Net.Requests
 {
@@ -32,12 +32,12 @@ namespace S7Plus.Net.Requests
     {
         private const byte TRANSPORT_FLAGS = 0x30;
 
-        public override UInt16 FunctionCode => Functioncode.InitSsl;
-
         public InitSslRequest(byte protocolVersion) : base(protocolVersion)
         {
             WithIntegrityId = false;
         }
+
+        public override UInt16 FunctionCode => Functioncode.InitSsl;
 
         public override int Serialize(Stream buffer)
         {

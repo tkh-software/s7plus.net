@@ -21,12 +21,12 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using S7Plus.Net.S7Variables;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace S7Plus.Net.Responses
 {

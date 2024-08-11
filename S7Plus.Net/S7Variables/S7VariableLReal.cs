@@ -22,9 +22,8 @@
 #endregion
 
 global using S7VariableLRealArray = S7Plus.Net.S7Variables.S7VariableArray<S7Plus.Net.S7Variables.S7VariableLReal, double>;
-
-using System.IO;
 using S7Plus.Net.Helpers;
+using System.IO;
 
 namespace S7Plus.Net.S7Variables
 {

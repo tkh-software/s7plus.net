@@ -21,10 +21,10 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.S7Variables;
+using System;
+using System.IO;
 
 namespace S7Plus.Net.Helpers
 {

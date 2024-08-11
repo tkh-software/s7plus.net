@@ -20,19 +20,20 @@
  /****************************************************************************/
 #endregion
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using S7Plus.Net.Constants;
+using S7Plus.Net.Requests;
+using S7Plus.Net.Responses;
+using S7Plus.Net.S7Variables;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using S7Plus.Net.Constants;
-using S7Plus.Net.Requests;
-using S7Plus.Net.Responses;
-using S7Plus.Net.S7Variables;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace S7Plus.Net
 {
@@ -43,7 +44,7 @@ namespace S7Plus.Net
 
         private TcpClient _client;
         private CotpNetworkStream _stream;
-        private readonly ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>> _requests;
+        private readonly ConcurrentDictionary<UInt64, Tuple<DateTime, TaskCompletionSource<byte[]>>> _requests;
         private UInt16 _sequenceNumber = 0;
         private UInt32 _integrityId = 0;
         private UInt32 _integrityIdSet = 0;
@@ -53,14 +54,14 @@ namespace S7Plus.Net
         private int _port;
         private TimeSpan _timeout;
 
-        private readonly ILogger<S7Client> _logger;
+        private readonly ILogger _logger;
 
         private uint _sessionId = S7Ids.ObjectNullServerSession;
         private uint _sessionId2 = S7Ids.ObjectNullServerSession;
 
-        public S7Client(ILogger<S7Client> logger = null)
+        public S7Client(ILogger logger = null)
         {
-            _requests = new ConcurrentDictionary<UInt64, TaskCompletionSource<byte[]>>();
+            _requests = new ConcurrentDictionary<UInt64, Tuple<DateTime, TaskCompletionSource<byte[]>>>();
             _logger = logger ?? new NullLogger<S7Client>();
         }
 
@@ -71,13 +72,17 @@ namespace S7Plus.Net
 
             if (timeout.TotalMilliseconds < 0)
                 throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
+
+            _timeout = timeout;
         }
 
-        public async Task Connect(string host, int port, TimeSpan timeout)
+        public async Task Connect(string host, int port)
         {
             _host = host;
             _port = port;
-            _timeout = timeout;
+
+            if (_timeout == TimeSpan.Zero)
+                _timeout = TimeSpan.FromSeconds(5);
 
             await AttemptConnection();
         }
@@ -199,7 +204,7 @@ namespace S7Plus.Net
 
             foreach (var tcs in _requests.Values)
             {
-                tcs.TrySetException(new IOException("Connection reset."));
+                tcs.Item2.TrySetException(new IOException("Connection reset."));
             }
 
             while (attempt < MAX_CONNECTION_ATTEMPTS)
@@ -265,7 +270,7 @@ namespace S7Plus.Net
         private async Task<byte[]> SendInternal(byte[] request, UInt16 sequenceNumber, byte protocolVersion)
         {
             var tcs = new TaskCompletionSource<byte[]>();
-            _requests.TryAdd(sequenceNumber, tcs);
+            _requests.TryAdd(sequenceNumber, new Tuple<DateTime, TaskCompletionSource<byte[]>>(DateTime.Now, tcs));
 
             int curSize;
             int sourcePos = 0;
@@ -315,7 +320,7 @@ namespace S7Plus.Net
                     sendLen++;
                     packet[sendLen] = 0;
                 }
-                
+
                 _stream.SendPacket(packet);
             }
 
@@ -336,6 +341,22 @@ namespace S7Plus.Net
                         byte[] buffer = _stream.ReceivePacket();
                         if (buffer.Length == 0)
                         {
+                            var itemsToRemove = new List<UInt64>();
+
+                            foreach (var reqTask in _requests)
+                            {
+                                if (DateTime.Now - reqTask.Value.Item1 > _timeout)
+                                {
+                                    itemsToRemove.Add(reqTask.Key);
+                                }
+                            }
+
+                            foreach (var key in itemsToRemove)
+                            {
+                                if (_requests.TryRemove(key, out var timoutTask))
+                                    timoutTask.Item2.TrySetException(new TimeoutException("Request timed out."));
+                            }
+
                             await Task.Delay(TimeSpan.FromMicroseconds(10), token);
                             continue;
                         }
@@ -378,7 +399,7 @@ namespace S7Plus.Net
 
                         if (_requests.TryRemove(s7Response.SequenceNumber, out var tcs))
                         {
-                            tcs.SetResult(fullPacket);
+                            tcs.Item2.SetResult(fullPacket);
                         }
                     }
                 }

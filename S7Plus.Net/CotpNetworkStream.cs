@@ -145,18 +145,15 @@ namespace S7Plus.Net
             int count = _sslClientProtocol == null ? Read(buffer, 0, buffer.Length)
                 : _sslClientProtocol.ReadApplicationData(buffer);
 
-            if(_sslClientProtocol != null)
-            {
-                byte[] data = new byte[count];
-                Array.Copy(buffer, data, count);
-                return data;
-            }
-
-            if(Length > 0)
+            if (Length > 0)
             {
                 byte[] data = new byte[Length];
-                Read(data, 0, data.Length);
-                
+
+                if (_sslClientProtocol == null)
+                    Read(data, 0, data.Length);
+                else
+                    _sslClientProtocol.ReadApplicationData(data, 0, data.Length);
+
                 //append to buffer
                 byte[] result = new byte[buffer.Length + data.Length];
                 Array.Copy(buffer, 0, result, 0, buffer.Length);
@@ -177,7 +174,7 @@ namespace S7Plus.Net
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(_buffer.Length > 0)
+            if (_buffer.Length > 0)
             {
                 int read = _buffer.Read(buffer, offset, count);
                 if (_buffer.Position == _buffer.Length)

@@ -28,7 +28,7 @@ namespace S7Plus.Net.Helpers
 {
     public static class ConvertGeneric
     {
-        private static readonly Dictionary<Type, Delegate> serializers = new()
+        private static readonly Dictionary<Type, Delegate> _serializers = new()
         {
             { typeof(byte), new Func<Stream, byte, int>(S7ValueEncoder.EncodeByte) },
             { typeof(sbyte), new Func<Stream, sbyte, int>((buffer, value) => S7ValueEncoder.EncodeByte(buffer, Convert.ToByte(value))) },
@@ -43,7 +43,7 @@ namespace S7Plus.Net.Helpers
             { typeof(double), new Func<Stream, double, int>(S7ValueEncoder.EncodeDouble) },
         };
 
-        private static readonly Dictionary<Type, Delegate> deserializers = new()
+        private static readonly Dictionary<Type, Delegate> _deserializers = new()
         {
             { typeof(byte), new Func<Stream, byte>(S7ValueDecoder.DecodeByte) },
             { typeof(sbyte), new Func<Stream, sbyte>(buffer => Convert.ToSByte(S7ValueDecoder.DecodeByte(buffer))) },
@@ -58,7 +58,7 @@ namespace S7Plus.Net.Helpers
             { typeof(double), new Func<Stream, double>(S7ValueDecoder.DecodeDouble) },
         };
 
-        private static readonly Dictionary<Type, Delegate> vlqDeserializers = new()
+        private static readonly Dictionary<Type, Delegate> _vlqDeserializers = new()
         {
             { typeof(byte), new Func<Stream, byte>(S7ValueDecoder.DecodeByte) },
             { typeof(sbyte), new Func<Stream, sbyte>(buffer => Convert.ToSByte(S7ValueDecoder.DecodeByte(buffer))) },
@@ -75,7 +75,7 @@ namespace S7Plus.Net.Helpers
 
         public static int Serialize<T>(Stream buffer, T value) where T : struct
         {
-            if (serializers.TryGetValue(typeof(T), out var serializer))
+            if (_serializers.TryGetValue(typeof(T), out var serializer))
             {
                 return ((Func<Stream, T, int>)serializer)(buffer, value);
             }
@@ -86,14 +86,14 @@ namespace S7Plus.Net.Helpers
         {
             if (disableVlq)
             {
-                if (deserializers.TryGetValue(typeof(T), out var deserializer))
+                if (_deserializers.TryGetValue(typeof(T), out var deserializer))
                 {
                     return ((Func<Stream, T>)deserializer)(buffer);
                 }
             }
             else
             {
-                if (vlqDeserializers.TryGetValue(typeof(T), out var deserializer))
+                if (_vlqDeserializers.TryGetValue(typeof(T), out var deserializer))
                 {
                     return ((Func<Stream, T>)deserializer)(buffer);
                 }

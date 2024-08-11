@@ -22,10 +22,9 @@
 #endregion
 
 global using S7VariableTimespanArray = S7Plus.Net.S7Variables.S7VariableArray<S7Plus.Net.S7Variables.S7VariableTimespan, System.Int64>;
-
+using S7Plus.Net.Helpers;
 using System;
 using System.IO;
-using S7Plus.Net.Helpers;
 
 namespace S7Plus.Net.S7Variables
 {

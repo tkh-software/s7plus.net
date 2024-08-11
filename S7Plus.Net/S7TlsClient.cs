@@ -20,10 +20,10 @@
  /****************************************************************************/
 #endregion
 
-using System.Collections.Generic;
-using System.Net.Security;
 using Org.BouncyCastle.Tls;
 using Org.BouncyCastle.Tls.Crypto.Impl.BC;
+using System.Collections.Generic;
+using System.Net.Security;
 
 namespace S7Plus.Net
 {

@@ -21,13 +21,13 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using S7Plus.Net.Models;
 using S7Plus.Net.S7Variables;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace S7Plus.Net.Requests
 {
@@ -39,8 +39,6 @@ namespace S7Plus.Net.Requests
         private readonly List<S7VariableBase> _values = new List<S7VariableBase>();
         private readonly List<UInt32> _varIds = new List<UInt32>();
         private readonly UInt32 _objectId = 0;
-
-        public override UInt16 FunctionCode => Functioncode.SetMultiVariables;
 
         public SetMultiVariablesRequest(byte protocolVersion, List<IS7Address> addresses, List<S7VariableBase> values) : base(protocolVersion)
         {
@@ -56,6 +54,8 @@ namespace S7Plus.Net.Requests
             _values = values ?? throw new ArgumentNullException(nameof(values));
             WithIntegrityId = true;
         }
+
+        public override UInt16 FunctionCode => Functioncode.SetMultiVariables;
 
         public override int Serialize(Stream buffer)
         {

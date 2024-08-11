@@ -21,12 +21,12 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using S7Plus.Net.S7Variables;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace S7Plus.Net.Responses
 {
@@ -47,7 +47,7 @@ namespace S7Plus.Net.Responses
             response.DeserializeBase(buffer);
 
             if (response.FunctionCode != Functioncode.GetMultiVariables)
-                throw new InvalidDataException($"Invalid function code in response to GetVarSubStreamed request: {response.FunctionCode}");
+                throw new InvalidDataException($"Invalid function code in response to GetMultiVariables request: {response.FunctionCode}");
 
             response.TransportFlags = S7ValueDecoder.DecodeByte(buffer);
             response.ReturnValue = S7VlqValueDecoder.DecodeUInt64Vlq(buffer);

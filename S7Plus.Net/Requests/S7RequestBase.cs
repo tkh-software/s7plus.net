@@ -21,15 +21,20 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
+using System;
+using System.IO;
 
 namespace S7Plus.Net.Requests
 {
     public abstract class S7RequestBase : IS7Request
     {
+        public S7RequestBase(byte protocolVersion)
+        {
+            ProtocolVersion = protocolVersion;
+        }
+
         public UInt32 SessionId { get; set; }
 
         public byte ProtocolVersion { get; }
@@ -41,11 +46,6 @@ namespace S7Plus.Net.Requests
         public bool WithIntegrityId { get; set; }
 
         public abstract UInt16 FunctionCode { get; }
-
-        public S7RequestBase(byte protocolVersion)
-        {
-            ProtocolVersion = protocolVersion;
-        }
 
         public virtual int Serialize(Stream buffer)
         {

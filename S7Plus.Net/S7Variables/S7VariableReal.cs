@@ -22,9 +22,8 @@
 #endregion
 
 global using S7VariableRealArray = S7Plus.Net.S7Variables.S7VariableArray<S7Plus.Net.S7Variables.S7VariableReal, float>;
-
-using System.IO;
 using S7Plus.Net.Helpers;
+using System.IO;
 
 namespace S7Plus.Net.S7Variables
 {

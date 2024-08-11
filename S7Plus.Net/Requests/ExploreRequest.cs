@@ -23,55 +23,63 @@
 
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
-using S7Plus.Net.Models;
+using S7Plus.Net.S7Variables;
 using System;
 using System.Collections.Generic;
 using System.IO;
 
 namespace S7Plus.Net.Requests
 {
-    public class GetMultiVariablesRequest : S7RequestBase
+    public class ExploreRequest : S7RequestBase
     {
         private const byte TRANSPORT_FLAGS = 0x34;
-        private const UInt32 LINK_ID = 0;
+        private readonly List<UInt32> _attributes = new List<UInt32>();
 
-        private readonly List<IS7Address> _addresses = new List<IS7Address>();
-
-        public GetMultiVariablesRequest(byte protocolVersion, List<IS7Address> addresses) : base(protocolVersion)
+        public ExploreRequest(byte protocolVersion) : base(protocolVersion)
         {
-            _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
             WithIntegrityId = true;
         }
 
-        public override UInt16 FunctionCode => Functioncode.GetMultiVariables;
+        public override UInt16 FunctionCode => Functioncode.Explore;
+        public UInt32 ExploreId { get; set; }
+        public UInt32 ExploreRequestId { get; set; }
+        public bool ExploreChildren { get; set; }
+        public bool ExploreParents { get; set; }
+        public S7VariableStruct? FilterData { get; set; }
+        public List<UInt32> Attributes => _attributes;
 
         public override int Serialize(Stream buffer)
         {
             int length = base.Serialize(buffer);
 
             length += S7ValueEncoder.EncodeByte(buffer, TRANSPORT_FLAGS);
-            length += S7ValueEncoder.EncodeUInt32(buffer, LINK_ID);
-            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (UInt32)_addresses.Count);
+            length += S7ValueEncoder.EncodeUInt32(buffer, ExploreId);
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, ExploreRequestId);
 
-            UInt32 fieldCount = 0;
-            foreach (IS7Address adr in _addresses)
-            {
-                fieldCount += adr.FieldCount;
-            }
-            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, fieldCount);
+            length += S7ValueEncoder.EncodeByte(buffer, ExploreChildren ? (byte)1 : (byte)0);
+            length += S7ValueEncoder.EncodeByte(buffer, 1); // unknown
+            length += S7ValueEncoder.EncodeByte(buffer, ExploreParents ? (byte)1 : (byte)0);
 
-            foreach (IS7Address adr in _addresses)
+            if (FilterData != null)
             {
-                length += adr.Serialize(buffer);
+                length += S7ValueEncoder.EncodeByte(buffer, 1); // unknown
+                length += FilterData.Serialize(buffer);
             }
-            length += S7ValueEncoder.EncodeObjectQualifier(buffer);
+
+            length += S7ValueEncoder.EncodeByte(buffer, 0); // unknown
+
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (UInt32)_attributes.Count);
+            foreach (UInt32 attribute in _attributes)
+            {
+                length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, attribute);
+            }
 
             if (WithIntegrityId)
-            {
                 length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, IntegrityId);
-            }
 
+            // Fill 5 bytes with 0
             length += S7ValueEncoder.EncodeUInt32(buffer, 0);
+            length += S7ValueEncoder.EncodeByte(buffer, 0);
 
             return length;
         }

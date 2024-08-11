@@ -21,11 +21,11 @@
  /****************************************************************************/
 #endregion
 
-using System;
-using System.IO;
 using S7Plus.Net.Constants;
 using S7Plus.Net.Helpers;
 using S7Plus.Net.S7Variables;
+using System;
+using System.IO;
 
 namespace S7Plus.Net.Requests
 {
@@ -33,15 +33,15 @@ namespace S7Plus.Net.Requests
     {
         private const byte TRANSPORT_FLAGS = 0x36;
 
-        public override UInt16 FunctionCode => Functioncode.CreateObject;
-        public UInt32 RequestId { get; set; }
-        public S7VariableBase RequestValue { get; set; }
-        public S7Object RequestObject { get; set; }
-
         public CreateObjectRequest(byte protocolVersion, bool withIntegrityId) : base(protocolVersion)
         {
             WithIntegrityId = withIntegrityId;
         }
+
+        public override UInt16 FunctionCode => Functioncode.CreateObject;
+        public UInt32 RequestId { get; set; }
+        public required S7VariableBase RequestValue { get; set; }
+        public required S7Object RequestObject { get; set; }
 
         public override int Serialize(Stream buffer)
         {

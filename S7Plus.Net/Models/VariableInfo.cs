@@ -21,42 +21,21 @@
  /****************************************************************************/
 #endregion
 
-global using S7VariableByteArray = S7Plus.Net.S7Variables.S7VariableArray<S7Plus.Net.S7Variables.S7VariableByte, byte>;
-using S7Plus.Net.Helpers;
-using System.IO;
+using System;
 
-namespace S7Plus.Net.S7Variables
+namespace S7Plus.Net.Models
 {
-    public class S7VariableByte : S7VariableBase
+    public record VariableInfo
     {
-        public byte Value { get; private set; }
-
-        public S7VariableByte() : this(default, 0)
+        public VariableInfo(string name, UInt32 softDatatype, IS7Address address)
         {
+            Name = name;
+            SoftDatatype = softDatatype;
+            Address = address;
         }
 
-        public S7VariableByte(byte value) : this(value, 0)
-        {
-        }
-
-        public S7VariableByte(byte value, byte flags)
-        {
-            Datatype = Constants.Datatype.Byte;
-            _datatypeFlags = flags;
-            Value = value;
-        }
-
-        public override int Serialize(Stream buffer)
-        {
-            int length = base.Serialize(buffer);
-            length += S7ValueEncoder.EncodeByte(buffer, Value);
-            return length;
-        }
-
-        public static S7VariableByte Deserialize(Stream buffer, byte flags)
-        {
-            byte value = S7ValueDecoder.DecodeByte(buffer);
-            return new S7VariableByte(value, flags);
-        }
+        public string Name { get; set; }
+        public UInt32 SoftDatatype { get; set; }
+        public IS7Address Address { get; set; }
     }
 }
