@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7Plus.Net", "S7Plus.Net\S7
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7PlusDriverTest", "S7PlusDriverTest\S7PlusDriverTest.csproj", "{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FB3FF71A-A918-4B5A-B34E-A543B723469B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7Plus.Net.Tests", "Tests\S7Plus.Net.Tests\S7Plus.Net.Tests.csproj", "{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,12 @@ Global
 		{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7DC9E9B4-5051-4BC2-9365-50DD4E403C78} = {FB3FF71A-A918-4B5A-B34E-A543B723469B}
 	EndGlobalSection
 EndGlobal

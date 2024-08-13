@@ -53,6 +53,7 @@ namespace S7Plus.Net
         private string _host;
         private int _port;
         private TimeSpan _timeout;
+        private object _lock = new object();
 
         private readonly ILogger _logger;
 
@@ -63,28 +64,32 @@ namespace S7Plus.Net
         {
             _requests = new ConcurrentDictionary<UInt64, Tuple<DateTime, TaskCompletionSource<byte[]>>>();
             _logger = logger ?? new NullLogger<S7Client>();
+            _timeout = TimeSpan.FromSeconds(5);
         }
 
         public void SetTimeout(TimeSpan timeout)
         {
-            if (timeout.TotalMilliseconds > int.MaxValue)
-                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is too large");
+            lock (_lock)
+            {
+                if (timeout.TotalMilliseconds > int.MaxValue)
+                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is too large");
 
-            if (timeout.TotalMilliseconds < 0)
-                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
+                if (timeout.TotalMilliseconds < 0)
+                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
 
-            _timeout = timeout;
+                _timeout = timeout;
+            }
         }
 
-        public async Task Connect(string host, int port)
+        public Task Connect(string host, int port)
         {
-            _host = host;
-            _port = port;
+            lock (_lock)
+            {
+                _host = host;
+                _port = port;
+            }
 
-            if (_timeout == TimeSpan.Zero)
-                _timeout = TimeSpan.FromSeconds(5);
-
-            await AttemptConnection();
+            return AttemptConnection();
         }
 
         private async Task AttemptConnection()
@@ -100,7 +105,7 @@ namespace S7Plus.Net
                 {
                     _client = new TcpClient();
                     await _client.ConnectAsync(_host, _port).WaitAsync(cts.Token);
-                    _stream = new CotpNetworkStream(_client.GetStream(), _host);
+                    _stream = new CotpNetworkStream(_client.GetStream());
                     _cts = new CancellationTokenSource();
 
                     int srcTsap = ((ushort)0x0600) & 0x0000FFFF;
@@ -198,7 +203,7 @@ namespace S7Plus.Net
             if (initSslResp.Error)
                 throw new Exception("Failed to initialize SSL session.");
 
-            _stream.EnableSsl();
+            await _stream.EnableSsl(_timeout);
         }
 
         private async Task Reconnect()
@@ -218,7 +223,6 @@ namespace S7Plus.Net
 
                     _client.Close();
                     _requests.Clear();
-                    _stream?.Dispose();
                     _stream = null;
 
                     await AttemptConnection();
@@ -247,7 +251,6 @@ namespace S7Plus.Net
             }
             catch (OperationCanceledException) { }
 
-            _stream.Dispose();
             _client.Close();
             _requests.Clear();
             _stream = null;
@@ -255,15 +258,18 @@ namespace S7Plus.Net
 
         public async Task<byte[]> Send(IS7Request request)
         {
-            _sequenceNumber++;
-            if (_sequenceNumber == UInt16.MaxValue)
-                _sequenceNumber = 1;
+            lock (_lock)
+            {
+                _sequenceNumber++;
+                if (_sequenceNumber == UInt16.MaxValue)
+                    _sequenceNumber = 1;
 
-            request.SequenceNumber = _sequenceNumber;
-            request.SessionId = _sessionId;
+                request.SequenceNumber = _sequenceNumber;
+                request.SessionId = _sessionId;
 
-            if (request.WithIntegrityId)
-                request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
+                if (request.WithIntegrityId)
+                    request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
+            }
 
             var buffer = new MemoryStream();
             request.Serialize(buffer);
@@ -272,7 +278,7 @@ namespace S7Plus.Net
 
         private async Task<byte[]> SendInternal(byte[] request, UInt16 sequenceNumber, byte protocolVersion)
         {
-            var tcs = new TaskCompletionSource<byte[]>();
+            var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
             _requests.TryAdd(sequenceNumber, new Tuple<DateTime, TaskCompletionSource<byte[]>>(DateTime.Now, tcs));
 
             int curSize;
@@ -340,6 +346,8 @@ namespace S7Plus.Net
                     {
                         if (_client.Client.Poll(0, SelectMode.SelectRead) && _client.Client.Available == 0)
                             throw new IOException("Connection reset.");
+
+                        _stream.Update();
 
                         byte[] buffer = _stream.ReceivePacket();
                         if (buffer.Length == 0)
@@ -441,7 +449,6 @@ namespace S7Plus.Net
 
         public void Dispose()
         {
-            _stream?.Dispose();
             _client?.Dispose();
         }
     }

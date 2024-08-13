@@ -86,7 +86,7 @@ namespace S7Plus.Net.DriverExtensions
 
             for (int i = 1; i <= getMultiVariablesResponse.Values.Count; i++)
             {
-                if (getMultiVariablesResponse.ErrorValues[(UInt32)i] != 0)
+                if (getMultiVariablesResponse.ErrorValues.ContainsKey((UInt32)i))
                 {
                     driver.Logger.LogWarning($"Error reading datablock information {addresses[i].AccessArea}.{addresses[i].AccessSubArea}: {getMultiVariablesResponse.ErrorValues[(UInt32)i]}");
                     continue;
@@ -109,7 +109,7 @@ namespace S7Plus.Net.DriverExtensions
             if (db != null)
             {
                 string accessSequence = db.BlockRelId.ToString("X");
-                return await BrowseVariableInfoInternal(driver, db.BlockRelId, symbol, SymbolParser.GetNextLevel(symbol), accessSequence);
+                return await BrowseVariableInfoInternal(driver, db.BlockTypeInfoRelId, symbol, SymbolParser.GetNextLevel(symbol), accessSequence);
             }
             else
             {
@@ -128,6 +128,18 @@ namespace S7Plus.Net.DriverExtensions
 
                 return varInfo;
             }
+        }
+
+        public static async Task<S7Object?> GetTypeInfoByRelId(this IS7Driver driver, UInt32 relId)
+        {
+            ExploreRequest request = new ExploreRequest(ProtocolVersion.V2)
+            {
+                ExploreId = relId,
+                ExploreChildren = true,
+            };
+
+            ExploreResponse response = await driver.Explore(request);
+            return response.Objects.Find(v => v.RelationId == relId);
         }
 
         private static async Task<VariableInfo?> BrowseVariableInfoInternal(IS7Driver driver, UInt32 relId, string fullSymbol, string symbol, string accessSequence,
@@ -151,7 +163,7 @@ namespace S7Plus.Net.DriverExtensions
                 return null;
 
             S7VarType varType = typeInfo.VarTypeList.Types[varListIndex];
-            accessSequence += "." + varListIndex.ToString("X");
+            accessSequence += "." + varType.LID.ToString("X");
 
             if (varType.OffsetInfo.IsOneDimensional)
             {
@@ -176,19 +188,6 @@ namespace S7Plus.Net.DriverExtensions
             {
                 return new VariableInfo(fullSymbol, varType.SoftDatatype, new S7Address(accessSequence));
             }
-        }
-
-        public static async Task<S7Object?> GetTypeInfoByRelId(this IS7Driver driver, UInt32 relId)
-        {
-            ExploreRequest request = new ExploreRequest(ProtocolVersion.V2)
-            {
-                ExploreId = relId,
-                ExploreChildren = true,
-                Attributes = { S7Ids.ObjectVariableTypeName }
-            };
-
-            ExploreResponse response = await driver.Explore(request);
-            return response.Objects.Find(v => v.RelationId == relId);
         }
     }
 }

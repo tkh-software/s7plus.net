@@ -40,7 +40,13 @@ SetMultiVariablesRequest setMultiVariablesRequest = new SetMultiVariablesRequest
 SetMultiVariablesResponse setMultiResponse = await client.SetMultiVariables(setMultiVariablesRequest);
 
 List<Datablock> datablocks = await client.GetDatablocks();
-VariableInfo? variableInfo = await client.GetVariableInfoBySymbol("DB1.TEST_BOOL", datablocks);
+VariableInfo? variableInfo = await client.GetVariableInfoBySymbol("DB1.TEST_DINT", datablocks);
+
+request = new GetMultiVariablesRequest(ProtocolVersion.V2, new List<IS7Address>{
+    variableInfo!.Address
+});
+
+getMultiVariablesResponse = await client.GetMultiVariables(request);
 
 Console.Read();
 await client.Disconnect();

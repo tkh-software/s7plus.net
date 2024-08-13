@@ -30,6 +30,9 @@ namespace S7Plus.Net.Helpers
     {
         private static ulong Decode(Stream buffer, int byteCount)
         {
+            if (buffer.Position >= buffer.Length)
+                return 0;
+
             ulong value = 0;
             for (int i = 0; i < byteCount; i++)
             {

@@ -22,44 +22,102 @@
 
 using Org.BouncyCastle.Tls;
 using System;
+using System.Collections.Concurrent;
 using System.IO;
-using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace S7Plus.Net
 {
-    public class CotpNetworkStream : Stream
+    public class CotpNetworkStream
     {
         private readonly NetworkStream _networkStream;
-        private readonly string _targetHost;
-        private TlsClientProtocol _sslClientProtocol;
-        private readonly MemoryStream _buffer = new MemoryStream();
+        private TlsClientProtocol _sslClientProtocol = new TlsClientProtocol();
+        private readonly ConcurrentQueue<byte[]> _readBuffer = new ConcurrentQueue<byte[]>();
+        private readonly ConcurrentQueue<byte[]> _writeBuffer = new ConcurrentQueue<byte[]>();
+        private bool _ssl = false;
+        private bool _handshaking = false;
 
-        public CotpNetworkStream(NetworkStream networkStream, string targetHost)
+        public CotpNetworkStream(NetworkStream networkStream)
         {
             _networkStream = networkStream ?? throw new ArgumentNullException(nameof(networkStream));
-            _targetHost = targetHost ?? throw new ArgumentNullException(nameof(targetHost));
         }
 
-        public override bool CanRead => _networkStream.CanRead;
-        public override bool CanSeek => _networkStream.CanSeek;
-        public override bool CanWrite => _networkStream.CanWrite;
-        public override long Length => _buffer.Length;
-        public override long Position { get => _buffer.Position; set => _networkStream.Position = value; }
-
-        public void EnableSsl()
+        public async Task EnableSsl(TimeSpan timeout)
         {
-            _sslClientProtocol = new TlsClientProtocol(this);
+            if (_ssl)
+                return;
+
             var tlsClient = new S7TlsClient();
+
+            _handshaking = true;
             _sslClientProtocol.Connect(tlsClient);
+
+            DateTime start = DateTime.Now;
+            while (tlsClient.IsHandshaking)
+            {
+                await Task.Delay(1);
+                if (DateTime.Now - start > timeout)
+                {
+                    _handshaking = false;
+                    throw new TimeoutException("The SSL handshake timed out.");
+                }
+            }
+
+            _handshaking = false;
+
+            if (tlsClient.IsHandshakeComplete)
+            {
+                _ssl = true;
+            }
+            else
+            {
+                throw new IOException("SSL handshake failed.");
+            }
         }
 
-        private static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        public void Update()
         {
-            // Implement server certificate validation
-            return true;
+            if (_networkStream.DataAvailable)
+            {
+                MemoryStream buffer = new MemoryStream();
+                int cotpLength = ReadCotp(buffer);
+
+                byte[] data = new byte[cotpLength];
+                buffer.Read(data, 0, cotpLength);
+
+                if (_ssl || _handshaking)
+                {
+                    _sslClientProtocol.OfferInput(data);
+
+                    byte[] sslData = new byte[_sslClientProtocol.GetAvailableInputBytes()];
+                    _sslClientProtocol.ReadInput(sslData, 0, sslData.Length);
+                    _readBuffer.Enqueue(sslData);
+                }
+                else
+                {
+                    _readBuffer.Enqueue(data);
+                }
+            }
+
+            if (_writeBuffer.TryDequeue(out byte[] bufferData))
+            {
+                if (_ssl)
+                {
+                    _sslClientProtocol.WriteApplicationData(bufferData, 0, bufferData.Length);
+                }
+                else
+                {
+                    WriteCotp(bufferData, 0, bufferData.Length);
+                }
+            }
+
+            if ((_ssl || _handshaking) && _sslClientProtocol.GetAvailableOutputBytes() > 0)
+            {
+                byte[] sslData = new byte[_sslClientProtocol.GetAvailableOutputBytes()];
+                _sslClientProtocol.ReadOutput(sslData, 0, sslData.Length);
+                WriteCotp(sslData, 0, sslData.Length);
+            }
         }
 
         public async Task SendConnectionRequest(int sourceTsap, byte[] destinationTsap, TimeSpan timeout)
@@ -126,64 +184,21 @@ namespace S7Plus.Net
 
         public void SendPacket(byte[] data)
         {
-            if (_sslClientProtocol != null)
-                _sslClientProtocol.WriteApplicationData(data, 0, data.Length);
-            else
-                Write(data, 0, data.Length);
-
-            Flush();
+            _writeBuffer.Enqueue(data);
         }
 
         public byte[] ReceivePacket()
         {
-            if (!_networkStream.DataAvailable)
+            if (_readBuffer.TryDequeue(out byte[] buffer))
             {
-                return Array.Empty<byte>();
+                return buffer;
             }
 
-            byte[] buffer = new byte[1024];
-            int count = _sslClientProtocol == null ? Read(buffer, 0, buffer.Length)
-                : _sslClientProtocol.ReadApplicationData(buffer);
-
-            if (Length > 0)
-            {
-                byte[] data = new byte[Length];
-
-                if (_sslClientProtocol == null)
-                    Read(data, 0, data.Length);
-                else
-                    _sslClientProtocol.ReadApplicationData(data, 0, data.Length);
-
-                //append to buffer
-                byte[] result = new byte[buffer.Length + data.Length];
-                Array.Copy(buffer, 0, result, 0, buffer.Length);
-                Array.Copy(data, 0, result, buffer.Length, data.Length);
-                return result;
-            }
-
-            //resize buffer
-            Array.Resize(ref buffer, count);
-
-            return buffer;
+            return Array.Empty<byte>();
         }
 
-        public override void Flush()
+        private int ReadCotp(MemoryStream buffer)
         {
-            _networkStream.Flush();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (_buffer.Length > 0)
-            {
-                int read = _buffer.Read(buffer, offset, count);
-                if (_buffer.Position == _buffer.Length)
-                {
-                    _buffer.SetLength(0);
-                }
-                return read;
-            }
-
             byte[] tpktHeader = new byte[4];
             _networkStream.Read(tpktHeader, 0, tpktHeader.Length);
 
@@ -198,8 +213,9 @@ namespace S7Plus.Net
 
             int cotpLength = tpktLength - tpktHeader.Length - cotpHeader.Length;
             byte[] cotpData = new byte[cotpLength];
-            _buffer.Position = 0;
-            _buffer.SetLength(0);
+
+            buffer.Position = 0;
+            buffer.SetLength(0);
 
             int bytesRead = 0;
             while (bytesRead < cotpLength)
@@ -212,22 +228,13 @@ namespace S7Plus.Net
                 bytesRead += read;
             }
 
-            _buffer.Write(cotpData, 0, cotpData.Length);
-            _buffer.Seek(0, SeekOrigin.Begin);
-            return Read(buffer, offset, count);
+            buffer.Write(cotpData, 0, cotpData.Length);
+            buffer.Seek(0, SeekOrigin.Begin);
+
+            return cotpData.Length;
         }
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return _networkStream.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            _networkStream.SetLength(value);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
+        private void WriteCotp(byte[] buffer, int offset, int count)
         {
             // Wrap the buffer in a COTP header before sending
             byte[] cotpHeader = new byte[]

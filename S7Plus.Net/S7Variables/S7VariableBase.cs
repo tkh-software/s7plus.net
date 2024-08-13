@@ -125,7 +125,7 @@ namespace S7Plus.Net.S7Variables
                     Constants.Datatype.LReal => S7VariableLReal.Deserialize(buffer, flags),
                     Constants.Datatype.Timestamp => S7VariableTimestamp.Deserialize(buffer, flags, disableVlq),
                     Constants.Datatype.Timespan => S7VariableTimespan.Deserialize(buffer, flags, disableVlq),
-                    Constants.Datatype.RID => S7VariableRID.Deserialize(buffer, flags, disableVlq),
+                    Constants.Datatype.RID => S7VariableRID.Deserialize(buffer, flags),
                     Constants.Datatype.AID => S7VariableAID.Deserialize(buffer, flags, disableVlq),
                     Constants.Datatype.Blob => S7VariableBlob.Deserialize(buffer, flags, disableVlq),
                     Constants.Datatype.WString => S7VariableWString.Deserialize(buffer, flags, disableVlq),

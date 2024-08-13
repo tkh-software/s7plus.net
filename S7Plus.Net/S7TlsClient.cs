@@ -27,7 +27,7 @@ using System.Net.Security;
 
 namespace S7Plus.Net
 {
-    public class S7TlsClient : DefaultTlsClient
+    public class S7TlsClient : AbstractTlsClient
     {
         private readonly S7TlsAuthentication _authentication;
 
@@ -35,6 +35,9 @@ namespace S7Plus.Net
         {
             _authentication = new S7TlsAuthentication();
         }
+
+        public bool IsHandshakeComplete { get; private set; }
+        public bool IsHandshaking { get; private set; }
 
         protected override int[] GetSupportedCipherSuites()
         {
@@ -68,6 +71,23 @@ namespace S7Plus.Net
         public override void NotifySessionID(byte[] sessionID)
         {
             base.NotifySessionID(sessionID);
+        }
+
+        public override void NotifyHandshakeBeginning()
+        {
+            IsHandshaking = true;
+        }
+
+        public override void NotifyHandshakeComplete()
+        {
+            IsHandshaking = false;
+            IsHandshakeComplete = true;
+        }
+
+        public override void NotifyConnectionClosed()
+        {
+            IsHandshakeComplete = false;
+            IsHandshaking = false;
         }
     }
 

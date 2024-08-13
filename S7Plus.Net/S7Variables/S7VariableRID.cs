@@ -54,9 +54,9 @@ namespace S7Plus.Net.S7Variables
             return length;
         }
 
-        public static S7VariableRID Deserialize(Stream buffer, byte flags, bool disableVlq)
+        public static S7VariableRID Deserialize(Stream buffer, byte flags)
         {
-            UInt32 value = disableVlq ? S7ValueDecoder.DecodeUInt32(buffer) : S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
+            UInt32 value = S7ValueDecoder.DecodeUInt32(buffer);
             return new S7VariableRID(value, flags);
         }
     }

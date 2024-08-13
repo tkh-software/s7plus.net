@@ -42,13 +42,13 @@ namespace S7Plus.Net.Models.OffsetInfos
 
             if (type == OffsetInfoType.Std)
             {
-                result.OptimizedAddress = ReadUInt32LE(buffer);
-                result.NonOptimizedAddress = ReadUInt32LE(buffer);
+                result.OptimizedAddress = ReadUInt16LE(buffer);
+                result.NonOptimizedAddress = ReadUInt16LE(buffer);
             }
             else
             {
-                result.NonOptimizedAddress = ReadUInt32LE(buffer);
-                result.OptimizedAddress = ReadUInt32LE(buffer);
+                result.NonOptimizedAddress = ReadUInt16LE(buffer);
+                result.OptimizedAddress = ReadUInt16LE(buffer);
             }
 
             return result;

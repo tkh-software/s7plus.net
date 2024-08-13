@@ -38,15 +38,15 @@ namespace S7Plus.Net.Models
             S7VarTypeList result = new S7VarTypeList();
 
             int length = 0;
-            int maxLength;
 
             UInt16 blockLength = S7ValueDecoder.DecodeUInt16(buffer);
             length += sizeof(UInt16);
 
+            int maxLength = length + blockLength;
+
             result.FirstId = S7ValueDecoder.DecodeUInt32LE(buffer);
             length += sizeof(UInt32);
 
-            maxLength = length + blockLength;
             while (blockLength > 0)
             {
                 do
@@ -55,7 +55,6 @@ namespace S7Plus.Net.Models
                     S7VarType type = S7VarType.Deserialize(buffer);
                     length += (int)(buffer.Position - startPos);
                     result.Types.Add(type);
-
                 } while (length < maxLength);
 
                 blockLength = S7ValueDecoder.DecodeUInt16(buffer);
