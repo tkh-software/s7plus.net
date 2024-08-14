@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7Plus.Net", "S7Plus.Net\S7Plus.Net.csproj", "{962D74B7-E67F-4F36-8A73-54745CC99750}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TKH.S7Plus.Net", "TKH.S7Plus.Net\TKH.S7Plus.Net.csproj", "{962D74B7-E67F-4F36-8A73-54745CC99750}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7PlusDriverTest", "S7PlusDriverTest\S7PlusDriverTest.csproj", "{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TKH.S7Plus.DriverTest", "TKH.S7Plus.DriverTest\TKH.S7Plus.DriverTest.csproj", "{1DC66DCF-BBBF-45B3-B61D-E4DC37389DC4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FB3FF71A-A918-4B5A-B34E-A543B723469B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "S7Plus.Net.Tests", "Tests\S7Plus.Net.Tests\S7Plus.Net.Tests.csproj", "{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TKH.S7Plus.Net.Tests", "Tests\TKH.S7Plus.Net.Tests\TKH.S7Plus.Net.Tests.csproj", "{7DC9E9B4-5051-4BC2-9365-50DD4E403C78}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
