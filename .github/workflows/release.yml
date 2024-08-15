@@ -22,7 +22,7 @@ jobs:
         run: dotnet restore
 
       - name: Pack NuGet package
-        run: dotnet pack TKH.S7Plus.Net/TKH.S7Plus.Net.csproj --configuration Release /p:PackageVersion=${GITHUB_REF#refs/tags/} /p:IncludeSymbols=true --output ./output
+        run: dotnet pack TKH.S7Plus.Net/TKH.S7Plus.Net.csproj --configuration Release /p:PackageVersion=${GITHUB_REF#refs/tags/} --output ./output
 
       - name: Publish to NuGet
         run: dotnet nuget push ./output/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
