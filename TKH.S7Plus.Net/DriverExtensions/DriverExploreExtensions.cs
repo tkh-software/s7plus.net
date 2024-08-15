@@ -21,7 +21,6 @@
  /****************************************************************************/
 #endregion
 
-using Microsoft.Extensions.Logging;
 using TKH.S7Plus.Net.Constants;
 using TKH.S7Plus.Net.Helpers;
 using TKH.S7Plus.Net.Models;
@@ -87,10 +86,7 @@ namespace TKH.S7Plus.Net.DriverExtensions
             for (int i = 1; i <= getMultiVariablesResponse.Values.Count; i++)
             {
                 if (getMultiVariablesResponse.ErrorValues.ContainsKey((UInt32)i))
-                {
-                    driver.Logger.LogWarning($"Error reading datablock information {addresses[i].AccessArea}.{addresses[i].AccessSubArea}: {getMultiVariablesResponse.ErrorValues[(UInt32)i]}");
                     continue;
-                }
 
                 S7VariableRID typeInfoRelId = (S7VariableRID)getMultiVariablesResponse.Values[(UInt32)i];
                 result[i - 1].BlockTypeInfoRelId = typeInfoRelId.Value;

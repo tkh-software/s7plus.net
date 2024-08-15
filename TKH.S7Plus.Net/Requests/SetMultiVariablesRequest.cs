@@ -40,6 +40,10 @@ namespace TKH.S7Plus.Net.Requests
         private readonly List<UInt32> _varIds = new List<UInt32>();
         private readonly UInt32 _objectId = 0;
 
+        public SetMultiVariablesRequest(List<IS7Address> addresses, List<S7VariableBase> values) : this(Constants.ProtocolVersion.V2, addresses, values)
+        {
+        }
+
         public SetMultiVariablesRequest(byte protocolVersion, List<IS7Address> addresses, List<S7VariableBase> values) : base(protocolVersion)
         {
             _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));

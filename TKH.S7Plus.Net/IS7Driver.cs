@@ -30,8 +30,6 @@ namespace TKH.S7Plus.Net
 {
     public interface IS7Driver
     {
-        ILogger Logger { get; }
-
         void SetTimeout(TimeSpan timeout);
         Task Connect(string host, int port);
         Task Disconnect();

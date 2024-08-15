@@ -60,7 +60,7 @@ namespace TKH.S7Plus.Net
         private uint _sessionId = S7Ids.ObjectNullServerSession;
         private uint _sessionId2 = S7Ids.ObjectNullServerSession;
 
-        public S7Client(ILogger logger = null)
+        public S7Client(ILogger? logger = null)
         {
             _requests = new ConcurrentDictionary<UInt64, Tuple<DateTime, TaskCompletionSource<byte[]>>>();
             _logger = logger ?? new NullLogger<S7Client>();

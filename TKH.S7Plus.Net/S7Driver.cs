@@ -22,13 +22,9 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using TKH.S7Plus.Net.Constants;
-using TKH.S7Plus.Net.Models;
 using TKH.S7Plus.Net.Requests;
 using TKH.S7Plus.Net.Responses;
-using TKH.S7Plus.Net.S7Variables;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -39,13 +35,11 @@ namespace TKH.S7Plus.Net
         private readonly ILogger _logger;
         private readonly S7Client _client;
 
-        public S7Driver(ILogger logger = null)
+        public S7Driver(ILogger? logger = null)
         {
             _client = new S7Client(logger);
             _logger = logger ?? new NullLogger<S7Driver>();
         }
-
-        public ILogger Logger => _logger;
 
         public void SetTimeout(TimeSpan timeout)
         {

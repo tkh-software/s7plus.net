@@ -37,6 +37,10 @@ namespace TKH.S7Plus.Net.Requests
 
         private readonly List<IS7Address> _addresses = new List<IS7Address>();
 
+        public GetMultiVariablesRequest(List<IS7Address> addresses) : this(Constants.ProtocolVersion.V2, addresses)
+        {
+        }
+
         public GetMultiVariablesRequest(byte protocolVersion, List<IS7Address> addresses) : base(protocolVersion)
         {
             _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
