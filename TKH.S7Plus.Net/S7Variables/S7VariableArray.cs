@@ -56,7 +56,7 @@ namespace TKH.S7Plus.Net.S7Variables
             return length;
         }
 
-        public static S7VariableArray<T, TValue> Deserialize(Stream buffer, byte flags, bool disableVlq)
+        public static S7VariableArray<T, TValue> DeserializeBase(Stream buffer, byte flags, bool disableVlq)
         {
             UInt32 length = disableVlq ? S7ValueDecoder.DecodeUInt32(buffer) : S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
 

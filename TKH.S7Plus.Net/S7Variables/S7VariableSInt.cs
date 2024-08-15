@@ -30,6 +30,11 @@ namespace TKH.S7Plus.Net.S7Variables
     {
         public S7VariableSIntArray(sbyte[] value) : base(value) { }
         public S7VariableSIntArray(sbyte[] value, byte flags) : base(value, flags) { }
+        public static S7VariableSIntArray Deserialize(Stream buffer, byte flags, bool disableVlq)
+        {
+            var baseArray = DeserializeBase(buffer, flags, disableVlq);
+            return new S7VariableSIntArray(baseArray.Value);
+        }
     }
 
     public class S7VariableSInt : S7VariableBase

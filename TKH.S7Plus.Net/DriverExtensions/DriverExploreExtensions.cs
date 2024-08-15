@@ -167,13 +167,13 @@ namespace TKH.S7Plus.Net.DriverExtensions
 
             if (varType.OffsetInfo.IsOneDimensional)
             {
-                accessSequence += AccessSeqCalculator.GetAccessSeqFor1DimArray(symbol, varType);
                 symbol = SymbolParser.GetNextLevel(symbol);
+                accessSequence += AccessSeqCalculator.GetAccessSeqFor1DimArray(symbol, varType);
             }
             else if (varType.OffsetInfo.IsMultiDimensional)
             {
-                accessSequence += AccessSeqCalculator.GetAccessSeqForMDimArray(symbol, varType);
                 symbol = SymbolParser.GetNextLevel(symbol);
+                accessSequence += AccessSeqCalculator.GetAccessSeqForMDimArray(symbol, varType);
             }
 
             if (varType.OffsetInfo.HasRelation)

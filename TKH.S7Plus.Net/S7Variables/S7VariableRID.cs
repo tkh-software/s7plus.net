@@ -31,6 +31,11 @@ namespace TKH.S7Plus.Net.S7Variables
     {
         public S7VariableRIDArray(UInt32[] value) : base(value) { }
         public S7VariableRIDArray(UInt32[] value, byte flags) : base(value, flags) { }
+        public static S7VariableRIDArray Deserialize(Stream buffer, byte flags, bool disableVlq)
+        {
+            var baseArray = DeserializeBase(buffer, flags, disableVlq);
+            return new S7VariableRIDArray(baseArray.Value);
+        }
     }
 
     public class S7VariableRID : S7VariableBase

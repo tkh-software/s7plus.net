@@ -31,6 +31,11 @@ namespace TKH.S7Plus.Net.S7Variables
     {
         public S7VariableTimestampArray(UInt64[] value) : base(value) { }
         public S7VariableTimestampArray(UInt64[] value, byte flags) : base(value, flags) { }
+        public static S7VariableTimestampArray Deserialize(Stream buffer, byte flags, bool disableVlq)
+        {
+            var baseArray = DeserializeBase(buffer, flags, disableVlq);
+            return new S7VariableTimestampArray(baseArray.Value);
+        }
     }
 
     public class S7VariableTimestamp : S7VariableBase

@@ -21,7 +21,6 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Constants;
 using TKH.S7Plus.Net.Helpers;
 using System;
 using System.IO;

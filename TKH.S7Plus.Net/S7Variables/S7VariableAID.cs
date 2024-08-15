@@ -31,6 +31,11 @@ namespace TKH.S7Plus.Net.S7Variables
     {
         public S7VariableAIDArray(UInt32[] value) : base(value) { }
         public S7VariableAIDArray(UInt32[] value, byte flags) : base(value, flags) { }
+        public static S7VariableAIDArray Deserialize(Stream buffer, byte flags, bool disableVlq)
+        {
+            var baseArray = DeserializeBase(buffer, flags, disableVlq);
+            return new S7VariableAIDArray(baseArray.Value);
+        }
     }
 
     public class S7VariableAID : S7VariableBase

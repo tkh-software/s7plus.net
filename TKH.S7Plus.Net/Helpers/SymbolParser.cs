@@ -39,13 +39,21 @@ namespace TKH.S7Plus.Net.Helpers
             else
             {
                 int idx = symbol.IndexOf('.');
+                int idx2 = symbol.IndexOf('[');
 
-                if (idx > 0)
-                    return symbol.Substring(0, idx);
-                else if (idx == 0)
-                    throw new Exception("Symbol syntax error");
+                if (idx2 > 0 && (idx < 0 || idx2 < idx))
+                {
+                    return symbol.Substring(0, idx2);
+                }
                 else
-                    return symbol;
+                {
+                    if (idx > 0)
+                        return symbol.Substring(0, idx);
+                    else if (idx == 0)
+                        throw new Exception("Symbol syntax error");
+                    else
+                        return symbol;
+                }
             }
         }
 
@@ -62,13 +70,21 @@ namespace TKH.S7Plus.Net.Helpers
             else
             {
                 int idx = symbol.IndexOf('.');
+                int idx2 = symbol.IndexOf('[');
 
-                if (idx > 0)
-                    return symbol.Substring(idx + 1);
-                else if (idx == 0)
-                    throw new Exception("Symbol syntax error");
+                if (idx2 > 0 && (idx < 0 || idx2 < idx))
+                {
+                    return symbol.Substring(idx2);
+                }
                 else
-                    return string.Empty;
+                {
+                    if (idx > 0)
+                        return symbol.Substring(idx + 1);
+                    else if (idx == 0)
+                        throw new Exception("Symbol syntax error");
+                    else
+                        return string.Empty;
+                }
             }
         }
     }

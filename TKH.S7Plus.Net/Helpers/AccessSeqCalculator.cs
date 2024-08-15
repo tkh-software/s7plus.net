@@ -37,7 +37,7 @@ namespace TKH.S7Plus.Net.Helpers
             Regex re = new Regex(@"^\[(\d+)\]");
             Match m = re.Match(symbol);
             if (!m.Success)
-                throw new Exception("Symbol syntax error");
+                return "";
 
             int arrayIndex = int.Parse(m.Groups[1].Value);
 

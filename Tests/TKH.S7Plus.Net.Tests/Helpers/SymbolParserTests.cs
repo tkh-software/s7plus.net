@@ -126,5 +126,21 @@ namespace TKH.S7Plus.Net.Tests.Helpers
             string result = SymbolParser.GetNextLevel(symbol);
             Assert.AreEqual(string.Empty, result);
         }
+
+        [TestMethod]
+        public void GetRootLevel_Array_ReturnsExpectedValue()
+        {
+            string symbol = "RootLevel.[0]";
+            string result = SymbolParser.GetRootLevel(symbol);
+            Assert.AreEqual("RootLevel", result);
+        }
+
+        [TestMethod]
+        public void GetNextLevel_Array_ReturnsExpectedValue()
+        {
+            string symbol = "[0]";
+            string result = SymbolParser.GetNextLevel(symbol);
+            Assert.AreEqual(string.Empty, result);
+        }
     }
 }
