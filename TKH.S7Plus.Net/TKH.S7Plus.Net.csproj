@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <PackageId>TKH.S7Plus.Net</PackageId>
+    <Authors>TKH Software GmbH</Authors>
+    <Company>TKH Software GmbH</Company>
+    <Description>TKH S7Plus.NET library for communicating with S7 PLCs</Description>
+    <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/tkh-software/s7plus.net.git</RepositoryUrl>
+    <PackageTags>PLC,S7</PackageTags>
+    <PackageProjectUrl>https://tkh-software.com</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\"/>
+</ItemGroup>
+
+</Project>
