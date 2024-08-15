@@ -20,7 +20,6 @@
  /****************************************************************************/
 #endregion
 
-using Microsoft.Extensions.Logging;
 using TKH.S7Plus.Net.Requests;
 using TKH.S7Plus.Net.Responses;
 using System;
@@ -33,6 +32,8 @@ namespace TKH.S7Plus.Net
         void SetTimeout(TimeSpan timeout);
         Task Connect(string host, int port);
         Task Disconnect();
+
+        bool IsConnected { get; }
 
         Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request);
         Task<SetMultiVariablesResponse> SetMultiVariables(SetMultiVariablesRequest request);

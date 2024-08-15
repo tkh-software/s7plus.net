@@ -67,6 +67,8 @@ namespace TKH.S7Plus.Net
             _timeout = TimeSpan.FromSeconds(5);
         }
 
+        public bool IsConnected => _stream != null;
+
         public void SetTimeout(TimeSpan timeout)
         {
             lock (_lock)

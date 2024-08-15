@@ -3,7 +3,6 @@
  * S7Plus.Net
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
- * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
  * This file is part of the S7Plus.Net project, which is based on the
  * S7CommPlusDriver project by Thomas Wiens
@@ -21,7 +20,6 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Constants;
 using TKH.S7Plus.Net.Models;
 using TKH.S7Plus.Net.Requests;
 using TKH.S7Plus.Net.Responses;

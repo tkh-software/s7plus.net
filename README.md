@@ -1,8 +1,8 @@
 ![Build Status](https://github.com/tkh-software/s7plus.net/actions/workflows/build.yml/badge.svg)
 
-# S7Plus.NET
+# S7Plus.Net
 
-S7Plus.NET is a .NET library for communicating with Siemens S7-1200 and S7-1500 PLCs.
+S7Plus.NET is a .NET library for communicating with Siemens S7-1200 and S7-1500 PLCs using the extended S7 protocol.
 The library is based on the excellent work of Thomas Wiens in the S7CommPlusDriver project.
 (https://github.com/thomas-v2/S7CommPlusDriver)
 

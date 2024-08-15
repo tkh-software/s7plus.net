@@ -21,7 +21,6 @@
 #endregion
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using TKH.S7Plus.Net.Requests;
 using TKH.S7Plus.Net.Responses;
 using System;
@@ -32,14 +31,14 @@ namespace TKH.S7Plus.Net
 {
     public class S7Driver : IS7Driver
     {
-        private readonly ILogger _logger;
         private readonly S7Client _client;
 
         public S7Driver(ILogger? logger = null)
         {
             _client = new S7Client(logger);
-            _logger = logger ?? new NullLogger<S7Driver>();
         }
+
+        public bool IsConnected => _client.IsConnected;
 
         public void SetTimeout(TimeSpan timeout)
         {
