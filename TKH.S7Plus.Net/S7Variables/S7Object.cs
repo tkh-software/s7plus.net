@@ -98,10 +98,8 @@ namespace TKH.S7Plus.Net.S7Variables
             return length;
         }
 
-        public static S7Object? Deserialize(Stream buffer)
+        public static S7Object? Deserialize(Stream buffer, S7Object? obj = null)
         {
-            S7Object? obj = null;
-
             bool terminate = false;
             do
             {
@@ -124,12 +122,10 @@ namespace TKH.S7Plus.Net.S7Variables
                             newobj.ClassId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
                             newobj.ClassFlags = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
                             newobj.AttributeId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
-                            S7Object? childObj = Deserialize(buffer);
+                            S7Object? childObj = Deserialize(buffer, newobj);
 
                             if (childObj != null)
-                                newobj.AddObject(childObj);
-
-                            obj.AddObject(newobj);
+                                obj.AddObject(childObj);
                         }
                         break;
                     case ElementId.TerminatingObject:
@@ -137,8 +133,9 @@ namespace TKH.S7Plus.Net.S7Variables
                         break;
                     case ElementId.Attribute:
                         UInt32 attrId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
+                        S7VariableBase attr = S7VariableBase.Deserialize(buffer);
                         if (obj != null && !obj.Attributes.ContainsKey(attrId))
-                            obj?.Attributes.Add(attrId, S7VariableBase.Deserialize(buffer));
+                            obj.Attributes.Add(attrId, attr);
                         break;
                     case ElementId.StartOfTagDescription:
                         // Skip, only 1200 FW2 and maybe older

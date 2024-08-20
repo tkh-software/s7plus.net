@@ -38,5 +38,11 @@ variableResult = await driver.GetVariable(variableInfo!.Address);
 S7VariableDIntArray dintArray = (S7VariableDIntArray)variableResult;
 Console.WriteLine($"Value of DB1.TEST_ARRAY: {string.Join(", ", dintArray.Value)}");
 
+List<VariableInfo> variableInfos = await driver.BrowseAllVariables();
+foreach (VariableInfo info in variableInfos)
+{
+    Console.WriteLine($"Symbol: {info.Name}");
+}
+
 await driver.Disconnect();
 Console.WriteLine("Goodbye World!");
