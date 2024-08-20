@@ -236,11 +236,13 @@ namespace TKH.S7Plus.Net
 
         private void WriteCotp(byte[] buffer, int offset, int count)
         {
+            int totalLength = count + 7;
+
             // Wrap the buffer in a COTP header before sending
             byte[] cotpHeader = new byte[]
             {
-            0x03, 0x00, 0x00, (byte)(count + 7), // COTP Header (3 bytes of COTP header + length)
-            0x02, 0xF0, 0x80,                   // COTP TPDU (indicates data packet)
+            0x03, 0x00, (byte)(totalLength >> 8), (byte)totalLength,    // COTP Header (3 bytes of COTP header + length)
+            0x02, 0xF0, 0x80,                                           // COTP TPDU (indicates data packet)
             };
 
             byte[] cotpWrappedMessage = new byte[cotpHeader.Length + count];

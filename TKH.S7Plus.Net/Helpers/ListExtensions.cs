@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /******************************************************************************
  * S7Plus.Net
  * 
@@ -20,25 +20,22 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Requests;
-using TKH.S7Plus.Net.Responses;
 using System;
-using System.Threading.Tasks;
-using TKH.S7Plus.Net.Models;
+using System.Collections.Generic;
 
-namespace TKH.S7Plus.Net
+namespace TKH.S7Plus.Net.Helpers
 {
-    public interface IS7Driver
+    public static class ListExtensions
     {
-        void SetTimeout(TimeSpan timeout);
-        Task Connect(string host, int port);
-        Task Disconnect();
+        public static IEnumerable<List<T>> ChunkBy<T>(this List<T> source, int chunkSize)
+        {
+            if (chunkSize <= 0)
+                throw new ArgumentException("Chunk size must be greater than 0.", nameof(chunkSize));
 
-        bool IsConnected { get; }
-        SystemInfo SystemInfo { get; }
-
-        Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request);
-        Task<SetMultiVariablesResponse> SetMultiVariables(SetMultiVariablesRequest request);
-        Task<ExploreResponse> Explore(ExploreRequest request);
+            for (int i = 0; i < source.Count; i += chunkSize)
+            {
+                yield return source.GetRange(i, Math.Min(chunkSize, source.Count - i));
+            }
+        }
     }
 }

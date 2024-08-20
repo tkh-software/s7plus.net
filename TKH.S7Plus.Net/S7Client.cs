@@ -398,7 +398,7 @@ namespace TKH.S7Plus.Net
 
                         UInt16 s7HeaderLength = (UInt16)((header[2] << 8) | header[3]);
                         totalS7Size += s7HeaderLength;
-                        if (memoryStream.Length < totalS7Size + 8)
+                        if (memoryStream.Length < totalS7Size + 4 + (headerPositions.Count * 4))
                         {
                             lastPacketPos = memoryStream.Length;
                             memoryStream.Position = memoryStream.Length; // Move to the end to append more data
