@@ -31,6 +31,7 @@ using TKH.S7Plus.Net.S7Variables;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace TKH.S7Plus.Net.DriverExtensions
 {
@@ -39,6 +40,8 @@ namespace TKH.S7Plus.Net.DriverExtensions
         private const UInt32 MARKER_TI_RID = 0x90030000;
         private const UInt32 OUTPUT_TI_RID = 0x90020000;
         private const UInt32 INPUT_TI_RID = 0x90010000;
+        private const UInt32 TIMER_TI_RID = 0x90050000;
+        private const UInt32 COUNTER_TI_RID = 0x90060000;
 
         public static async Task<List<Datablock>> GetDatablocks(this IS7Driver driver)
         {
@@ -136,6 +139,36 @@ namespace TKH.S7Plus.Net.DriverExtensions
 
             ExploreResponse response = await driver.Explore(request);
             return response.Objects.Find(v => v.RelationId == relId);
+        }
+
+        public static async Task<List<VariableInfo>> BrowseAllVariables(this IS7Driver driver)
+        {
+            List<Datablock> dbs = await driver.GetDatablocks();
+
+            ExploreResponse exploreResponse = await driver.Explore(new ExploreRequest(ProtocolVersion.V2)
+            {
+                ExploreId = S7Ids.ObjectOMSTypeInfoContainer,
+                ExploreChildren = true
+            });
+
+            if (!exploreResponse.Objects.Any(v => v.ClassId == S7Ids.ClassOMSTypeInfoContainer))
+                return new List<VariableInfo>();
+
+            var typeInfos = exploreResponse.Objects.First(v => v.ClassId == S7Ids.ClassOMSTypeInfoContainer).Objects;
+
+            VariableBrowser browser = new VariableBrowser(typeInfos.ToList());
+            foreach (Datablock db in dbs)
+            {
+                browser.AddRootNode(db.BlockName, db.BlockRelId, db.BlockTypeInfoRelId);
+            }
+
+            browser.AddRootNode("I", S7Ids.NativeObjectsTheIAreaRid, 0x90010000);
+            browser.AddRootNode("Q", S7Ids.NativeObjectsTheQAreaRid, 0x90020000);
+            browser.AddRootNode("M", S7Ids.NativeObjectsTheMAreaRid, 0x90030000);
+            browser.AddRootNode("S7Timers", S7Ids.NativeObjectsTheS7TimersRid, 0x90050000);
+            browser.AddRootNode("S7Counters", S7Ids.NativeObjectsTheS7CountersRid, 0x90060000);
+
+            return browser.GetAllVariables();
         }
 
         private static async Task<VariableInfo?> BrowseVariableInfoInternal(IS7Driver driver, UInt32 relId, string fullSymbol, string symbol, string accessSequence,

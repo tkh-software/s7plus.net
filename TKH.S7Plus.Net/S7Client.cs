@@ -342,6 +342,10 @@ namespace TKH.S7Plus.Net
         {
             try
             {
+                long lastPacketPos = 0;
+                long totalS7Size = 0;
+                List<long> headerPositions = new List<long>();
+
                 using (var memoryStream = new MemoryStream())
                 {
                     while (!token.IsCancellationRequested)
@@ -381,7 +385,8 @@ namespace TKH.S7Plus.Net
                             continue;
                         }
 
-                        memoryStream.Position = 0;
+                        memoryStream.Position = lastPacketPos;
+                        headerPositions.Add(memoryStream.Position);
                         byte[] header = new byte[4];
                         memoryStream.Read(header, 0, 4);
 
@@ -392,19 +397,31 @@ namespace TKH.S7Plus.Net
                             throw new InvalidDataException("Invalid protocol version");
 
                         UInt16 s7HeaderLength = (UInt16)((header[2] << 8) | header[3]);
-                        if (memoryStream.Length < s7HeaderLength + 4)
+                        totalS7Size += s7HeaderLength;
+                        if (memoryStream.Length < totalS7Size + 8)
                         {
+                            lastPacketPos = memoryStream.Length;
                             memoryStream.Position = memoryStream.Length; // Move to the end to append more data
                             continue;
                         }
 
-                        byte[] fullPacket = new byte[s7HeaderLength];
-                        memoryStream.Position = 4;
-                        memoryStream.Read(fullPacket, 0, fullPacket.Length);
+                        byte[] fullPacket = new byte[totalS7Size];
+                        int fullPacketPos = 0;
+                        for (int i = 0; i < headerPositions.Count; i++)
+                        {
+                            memoryStream.Position = headerPositions[i] + 4;
+                            int lengthToRead = (i < headerPositions.Count - 1) ? (int)((headerPositions[i + 1] - headerPositions[i]) - 4) :
+                                (int)(totalS7Size - headerPositions[i]);
+                            memoryStream.Read(fullPacket, fullPacketPos, lengthToRead);
+                            fullPacketPos += lengthToRead;
+                        }
 
                         // Remove the processed packet from the stream
                         memoryStream.SetLength(0);
                         memoryStream.Position = 0;
+                        lastPacketPos = 0;
+                        totalS7Size = 0;
+                        headerPositions.Clear();
 
                         // Process the packet
                         S7ResponseBase s7Response = new S7ResponseBase();

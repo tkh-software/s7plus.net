@@ -33,7 +33,6 @@ namespace TKH.S7Plus.Net.Requests
     public class ExploreRequest : S7RequestBase
     {
         private const byte TRANSPORT_FLAGS = 0x34;
-        private readonly List<UInt32> _attributes = new List<UInt32>();
 
         public ExploreRequest(byte protocolVersion) : base(protocolVersion)
         {
@@ -46,7 +45,7 @@ namespace TKH.S7Plus.Net.Requests
         public bool ExploreChildren { get; set; }
         public bool ExploreParents { get; set; }
         public S7VariableStruct? FilterData { get; set; }
-        public List<UInt32> Attributes => _attributes;
+        public List<UInt32> Attributes { get; set; } = new List<UInt32>();
 
         public override int Serialize(Stream buffer)
         {
@@ -68,8 +67,8 @@ namespace TKH.S7Plus.Net.Requests
 
             length += S7ValueEncoder.EncodeByte(buffer, 0); // unknown
 
-            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (UInt32)_attributes.Count);
-            foreach (UInt32 attribute in _attributes)
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (UInt32)Attributes.Count);
+            foreach (UInt32 attribute in Attributes)
             {
                 length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, attribute);
             }
