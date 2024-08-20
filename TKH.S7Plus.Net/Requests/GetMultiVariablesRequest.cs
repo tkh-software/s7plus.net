@@ -48,6 +48,7 @@ namespace TKH.S7Plus.Net.Requests
         }
 
         public override UInt16 FunctionCode => Functioncode.GetMultiVariables;
+        public List<IS7Address> Addresses => _addresses;
 
         public override int Serialize(Stream buffer)
         {

@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using TKH.S7Plus.Net.Helpers;
 
 namespace TKH.S7Plus.Net.DriverExtensions
 {
@@ -46,13 +47,20 @@ namespace TKH.S7Plus.Net.DriverExtensions
 
         public static async Task<List<S7VariableBase>> GetVariables(this IS7Driver driver, List<IS7Address> addresses)
         {
-            GetMultiVariablesRequest request = new GetMultiVariablesRequest(addresses);
-            GetMultiVariablesResponse response = await driver.GetMultiVariables(request);
+            List<S7VariableBase> result = new List<S7VariableBase>();
+            IEnumerable<List<IS7Address>> chunks = addresses.ChunkBy(driver.SystemInfo.MaxReadVariables);
+            foreach (List<IS7Address> chunk in chunks)
+            {
+                GetMultiVariablesRequest request = new GetMultiVariablesRequest(chunk);
+                GetMultiVariablesResponse response = await driver.GetMultiVariables(request);
 
-            if (response.ErrorValues.Any())
-                throw new Exception("Error reading variables: " + string.Join(",", response.ErrorValues.Values));
+                if (response.ErrorValues.Any())
+                    throw new Exception("Error reading variables: " + string.Join(",", response.ErrorValues.Values));
 
-            return response.Values.Values.ToList();
+                result.AddRange(response.Values.Values);
+            }
+
+            return result;
         }
 
         public static async Task SetVariable(this IS7Driver driver, IS7Address address, S7VariableBase value)
@@ -66,11 +74,18 @@ namespace TKH.S7Plus.Net.DriverExtensions
 
         public static async Task SetVariables(this IS7Driver driver, List<IS7Address> addresses, List<S7VariableBase> values)
         {
-            SetMultiVariablesRequest request = new SetMultiVariablesRequest(addresses, values);
-            SetMultiVariablesResponse response = await driver.SetMultiVariables(request);
+            IEnumerable<List<IS7Address>> chunks = addresses.ChunkBy(driver.SystemInfo.MaxWriteVariables);
+            IEnumerable<List<S7VariableBase>> valueChunks = values.ChunkBy(driver.SystemInfo.MaxWriteVariables);
+            for (int i = 0; i < chunks.Count(); i++)
+            {
+                List<IS7Address> chunk = chunks.ElementAt(i);
+                List<S7VariableBase> chunkValues = valueChunks.ElementAt(i);
+                SetMultiVariablesRequest request = new SetMultiVariablesRequest(chunk, chunkValues);
+                SetMultiVariablesResponse response = await driver.SetMultiVariables(request);
 
-            if (response.ErrorValues.Any())
-                throw new Exception("Error writing variables: " + string.Join(",", response.ErrorValues.Values));
+                if (response.ErrorValues.Any())
+                    throw new Exception("Error writing variables: " + string.Join(",", response.ErrorValues.Values));
+            }
         }
     }
 }

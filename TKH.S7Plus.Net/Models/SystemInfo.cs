@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /******************************************************************************
  * S7Plus.Net
  * 
@@ -20,25 +20,31 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Requests;
-using TKH.S7Plus.Net.Responses;
-using System;
-using System.Threading.Tasks;
-using TKH.S7Plus.Net.Models;
+using TKH.S7Plus.Net.Constants;
 
-namespace TKH.S7Plus.Net
+namespace TKH.S7Plus.Net.Models
 {
-    public interface IS7Driver
+    public class SystemInfo
     {
-        void SetTimeout(TimeSpan timeout);
-        Task Connect(string host, int port);
-        Task Disconnect();
+        public SystemInfo() : this(16, 16)
+        {
+        }
 
-        bool IsConnected { get; }
-        SystemInfo SystemInfo { get; }
+        public SystemInfo(int maxReadVariables, int maxWriteVariables)
+        {
+            MaxReadVariables = maxReadVariables;
+            MaxWriteVariables = maxWriteVariables;
 
-        Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request);
-        Task<SetMultiVariablesResponse> SetMultiVariables(SetMultiVariablesRequest request);
-        Task<ExploreResponse> Explore(ExploreRequest request);
+            MaxReadSystemInfoAddress = new S7Address(S7Ids.ObjectRoot, S7Ids.SystemLimits);
+            MaxWriteSystemInfoAddress = new S7Address(S7Ids.ObjectRoot, S7Ids.SystemLimits);
+
+            MaxReadSystemInfoAddress.Offsets.Add(1000);
+            MaxWriteSystemInfoAddress.Offsets.Add(1001);
+        }
+
+        public int MaxReadVariables { get; }
+        public int MaxWriteVariables { get; }
+        public S7Address MaxReadSystemInfoAddress { get; }
+        public S7Address MaxWriteSystemInfoAddress { get; }
     }
 }

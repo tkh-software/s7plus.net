@@ -26,28 +26,46 @@ using TKH.S7Plus.Net.Responses;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using TKH.S7Plus.Net.Models;
+using System.Collections.Generic;
+using TKH.S7Plus.Net.S7Variables;
+using System.Linq;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TKH.S7Plus.Net
 {
     public class S7Driver : IS7Driver
     {
         private readonly S7Client _client;
+        private readonly ILogger _logger;
+        private SystemInfo _systemInfo = new SystemInfo();
 
         public S7Driver(ILogger? logger = null)
         {
+            _logger = logger ?? new NullLogger<S7Driver>();
             _client = new S7Client(logger);
         }
 
         public bool IsConnected => _client.IsConnected;
+        public SystemInfo SystemInfo => _systemInfo;
 
         public void SetTimeout(TimeSpan timeout)
         {
             _client.SetTimeout(timeout);
         }
 
-        public Task Connect(string host, int port)
+        public async Task Connect(string host, int port)
         {
-            return _client.Connect(host, port);
+            await _client.Connect(host, port);
+
+            try
+            {
+                await ReadSystemInfo();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to read system info");
+            }
         }
 
         public Task Disconnect()
@@ -74,6 +92,22 @@ namespace TKH.S7Plus.Net
             byte[] buffer = await _client.Send(request);
             using MemoryStream stream = new MemoryStream(buffer);
             return ExploreResponse.Deserialize(stream);
+        }
+
+        private async Task ReadSystemInfo()
+        {
+            GetMultiVariablesRequest request = new GetMultiVariablesRequest(new List<IS7Address>
+            {
+                _systemInfo.MaxReadSystemInfoAddress,
+                _systemInfo.MaxWriteSystemInfoAddress
+            });
+
+            GetMultiVariablesResponse response = await GetMultiVariables(request);
+
+            int maxRead = ((S7VariableDInt)response.Values.First().Value).Value;
+            int maxWrite = ((S7VariableDInt)response.Values.Skip(1).First().Value).Value;
+
+            _systemInfo = new SystemInfo(maxRead, maxWrite);
         }
     }
 }
