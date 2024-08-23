@@ -29,10 +29,10 @@ using System.Threading.Tasks;
 
 namespace TKH.S7Plus.Net
 {
-    public class CotpNetworkStream
+    public class CotpNetworkStream : IDisposable
     {
         private readonly NetworkStream _networkStream;
-        private TlsClientProtocol _sslClientProtocol = new TlsClientProtocol();
+        private readonly TlsClientProtocol _sslClientProtocol = new TlsClientProtocol();
         private readonly ConcurrentQueue<byte[]> _readBuffer = new ConcurrentQueue<byte[]>();
         private readonly ConcurrentQueue<byte[]> _writeBuffer = new ConcurrentQueue<byte[]>();
         private bool _ssl = false;
@@ -90,9 +90,12 @@ namespace TKH.S7Plus.Net
                 {
                     _sslClientProtocol.OfferInput(data);
 
-                    byte[] sslData = new byte[_sslClientProtocol.GetAvailableInputBytes()];
-                    _sslClientProtocol.ReadInput(sslData, 0, sslData.Length);
-                    _readBuffer.Enqueue(sslData);
+                    if (!_handshaking)
+                    {
+                        byte[] sslData = new byte[_sslClientProtocol.GetAvailableInputBytes()];
+                        _sslClientProtocol.ReadInput(sslData, 0, sslData.Length);
+                        _readBuffer.Enqueue(sslData);
+                    }
                 }
                 else
                 {
@@ -250,6 +253,11 @@ namespace TKH.S7Plus.Net
             Array.Copy(buffer, offset, cotpWrappedMessage, cotpHeader.Length, count);
 
             _networkStream.Write(cotpWrappedMessage, 0, cotpWrappedMessage.Length);
+        }
+
+        public void Dispose()
+        {
+            _networkStream.Dispose();
         }
     }
 }
