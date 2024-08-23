@@ -68,9 +68,9 @@ namespace TKH.S7Plus.Net
             }
         }
 
-        public Task Disconnect()
+        public void Disconnect()
         {
-            return _client.Disconnect();
+            _client.Disconnect();
         }
 
         public async Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request)

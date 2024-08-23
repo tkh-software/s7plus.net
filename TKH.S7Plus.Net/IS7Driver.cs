@@ -32,7 +32,7 @@ namespace TKH.S7Plus.Net
     {
         void SetTimeout(TimeSpan timeout);
         Task Connect(string host, int port);
-        Task Disconnect();
+        void Disconnect();
 
         bool IsConnected { get; }
         SystemInfo SystemInfo { get; }

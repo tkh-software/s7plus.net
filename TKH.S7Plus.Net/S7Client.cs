@@ -41,6 +41,8 @@ namespace TKH.S7Plus.Net
     {
         private const int MAX_CONNECTION_ATTEMPTS = 5;
         private const UInt32 SESSION_CLIENT_RID = 0x80c3c901;
+        private const int S7_HEADER_SIZE = 4;
+        private const int S7_TRAILER_SIZE = 4;
 
         private TcpClient _client;
         private CotpNetworkStream _stream;
@@ -53,7 +55,7 @@ namespace TKH.S7Plus.Net
         private string _host;
         private int _port;
         private TimeSpan _timeout;
-        private object _lock = new object();
+        private SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
 
         private readonly ILogger _logger;
 
@@ -67,38 +69,39 @@ namespace TKH.S7Plus.Net
             _timeout = TimeSpan.FromSeconds(5);
         }
 
-        public bool IsConnected => _stream != null;
+        public bool IsConnected { get; private set; }
 
         public void SetTimeout(TimeSpan timeout)
         {
-            lock (_lock)
-            {
-                if (timeout.TotalMilliseconds > int.MaxValue)
-                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is too large");
+            if (timeout.TotalMilliseconds > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is too large");
 
-                if (timeout.TotalMilliseconds < 0)
-                    throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
+            if (timeout.TotalMilliseconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
 
-                _timeout = timeout;
-            }
+            _lock.Wait();
+            _timeout = timeout;
+            _lock.Release();
         }
 
-        public Task Connect(string host, int port)
+        public async Task Connect(string host, int port)
         {
-            lock (_lock)
-            {
-                _host = host;
-                _port = port;
-            }
+            if (IsConnected)
+                throw new InvalidOperationException("Already connected.");
 
-            return AttemptConnection();
+            _lock.Wait();
+
+            _host = host;
+            _port = port;
+
+            _lock.Release();
+
+            await AttemptConnection();
+            IsConnected = true;
         }
 
         private async Task AttemptConnection()
         {
-            if (_stream != null)
-                return;
-
             _logger.LogInformation($"Attempting to connect to {_host}:{_port}...");
 
             using (var cts = new CancellationTokenSource(_timeout))
@@ -146,7 +149,7 @@ namespace TKH.S7Plus.Net
 
             MemoryStream writeBuffer = new MemoryStream();
             request.Serialize(writeBuffer);
-            var response = await Send(request);
+            var response = await SendInternal(request);
 
             Stream buffer = new MemoryStream(response);
             CreateObjectResponse objResponse = CreateObjectResponse.Deserialize(buffer);
@@ -167,14 +170,16 @@ namespace TKH.S7Plus.Net
                 ProtocolVersion.V2, _sessionId, [S7Ids.ServerSessionVersion], [objResponse.Object.Attributes[S7Ids.ServerSessionVersion]]);
             setupSessionReq.WithIntegrityId = false;
 
-            response = await Send(setupSessionReq);
+            response = await SendInternal(setupSessionReq);
+
             buffer = new MemoryStream(response);
             SetMultiVariablesResponse setupSessionResp = SetMultiVariablesResponse.Deserialize(buffer);
             if (setupSessionResp.ErrorValues.Count > 0)
                 throw new Exception("Failed to initialize S7 session. Error setting session version.");
 
             GetVarSubStreamedRequest getAccessLevel = new GetVarSubStreamedRequest(ProtocolVersion.V2, _sessionId, S7Ids.EffectiveProtectionLevel);
-            response = await Send(getAccessLevel);
+
+            response = await SendInternal(getAccessLevel);
 
             buffer = new MemoryStream(response);
             GetVarSubStreamedResponse getAccessLevelResp = GetVarSubStreamedResponse.Deserialize(buffer);
@@ -197,7 +202,8 @@ namespace TKH.S7Plus.Net
             InitSslRequest initSslRequest = new InitSslRequest(ProtocolVersion.V1);
             MemoryStream initSslBuffer = new MemoryStream();
             initSslRequest.Serialize(initSslBuffer);
-            var initSslResponse = await SendInternal(initSslBuffer.ToArray(), 0, ProtocolVersion.V1);
+
+            var initSslResponse = await SendS7Packet(initSslBuffer.ToArray(), 0, ProtocolVersion.V1);
 
             Stream buffer = new MemoryStream(initSslResponse);
             InitSslResponse initSslResp = InitSslResponse.Deserialize(buffer);
@@ -210,12 +216,23 @@ namespace TKH.S7Plus.Net
 
         private async Task Reconnect()
         {
-            int attempt = 0;
+            IsConnected = false;
 
-            foreach (var tcs in _requests.Values)
+            await Task.Yield(); // Ensure the current method is async
+
+            try
             {
-                tcs.Item2.TrySetException(new IOException("Connection reset."));
+                foreach (var tcs in _requests.Values)
+                {
+                    tcs.Item2.TrySetException(new IOException("Connection reset."));
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reset requests.");
+            }
+
+            int attempt = 0;
 
             while (attempt < MAX_CONNECTION_ATTEMPTS)
             {
@@ -223,11 +240,10 @@ namespace TKH.S7Plus.Net
                 {
                     _logger.LogDebug($"Attempting to reconnect... (Attempt {attempt + 1}/{MAX_CONNECTION_ATTEMPTS})");
 
-                    _client.Close();
-                    _requests.Clear();
-                    _stream = null;
+                    CleanupResources();
 
                     await AttemptConnection();
+                    IsConnected = true;
                     return;
                 }
                 catch (Exception ex)
@@ -241,44 +257,63 @@ namespace TKH.S7Plus.Net
             _logger.LogError("Failed to reconnect after {0} attempts", MAX_CONNECTION_ATTEMPTS);
         }
 
-        public async Task Disconnect()
+        private void CleanupResources()
         {
-            if (_stream == null)
-                return;
-
-            _cts.Cancel();
             try
             {
-                await _receiveTask;
+                _cts.Cancel();
+                _receiveTask?.Wait(); // Ensure the receive loop is finished
             }
-            catch (OperationCanceledException) { }
+            catch (Exception) { }
 
-            _client.Close();
+            _stream?.Dispose();
+            _client?.Close();
+            _client?.Dispose();
             _requests.Clear();
-            _stream = null;
+            _cts.Dispose();
+            _integrityId = 0;
+            _integrityIdSet = 0;
+            _sequenceNumber = 0;
+            _sessionId = S7Ids.ObjectNullServerSession;
+            _sessionId2 = S7Ids.ObjectNullServerSession;
         }
 
-        public async Task<byte[]> Send(IS7Request request)
+        public void Disconnect()
         {
-            lock (_lock)
-            {
-                _sequenceNumber++;
-                if (_sequenceNumber == UInt16.MaxValue)
-                    _sequenceNumber = 1;
+            IsConnected = false;
+            CleanupResources();
+        }
 
-                request.SequenceNumber = _sequenceNumber;
-                request.SessionId = _sessionId;
+        public Task<byte[]> Send(IS7Request request)
+        {
+            if (!IsConnected)
+                throw new InvalidOperationException("Not connected.");
 
-                if (request.WithIntegrityId)
-                    request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
-            }
+            return SendInternal(request);
+        }
+
+        private Task<byte[]> SendInternal(IS7Request request)
+        {
+            _lock.Wait();
+
+            _sequenceNumber++;
+            if (_sequenceNumber == UInt16.MaxValue)
+                _sequenceNumber = 1;
+
+            request.SequenceNumber = _sequenceNumber;
+            request.SessionId = _sessionId;
+
+            if (request.WithIntegrityId)
+                request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
+
+            _lock.Release();
 
             var buffer = new MemoryStream();
             request.Serialize(buffer);
-            return await SendInternal(buffer.ToArray(), _sequenceNumber, request.ProtocolVersion);
+            return SendS7Packet(buffer.ToArray(), _sequenceNumber, request.ProtocolVersion);
         }
 
-        private async Task<byte[]> SendInternal(byte[] request, UInt16 sequenceNumber, byte protocolVersion)
+        private async Task<byte[]> SendS7Packet(byte[] request, UInt16 sequenceNumber, byte protocolVersion)
         {
             var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
             _requests.TryAdd(sequenceNumber, new Tuple<DateTime, TaskCompletionSource<byte[]>>(DateTime.Now, tcs));
@@ -294,8 +329,8 @@ namespace TKH.S7Plus.Net
             // 5 Byte TLS Header + 17 Bytes addition from TLS
             // 4 Byte S7CommPlus Header
             // 4 Byte S7CommPlus Trailer (must fit into last PDU)
-            int MaxSize = NegotiatedIsoPduSize - 4 - 3 - 5 - 17 - 4 - 4;
-            byte[] packet = new byte[MaxSize + 4]; //max packet size is always MaxSize + PDU Header
+            int MaxSize = NegotiatedIsoPduSize - 4 - 3 - 5 - 17 - S7_HEADER_SIZE - S7_TRAILER_SIZE;
+            byte[] packet = new byte[MaxSize + S7_HEADER_SIZE]; //max packet size is always MaxSize + PDU Header
 
             while (bytesToSend > 0)
             {
@@ -315,14 +350,14 @@ namespace TKH.S7Plus.Net
                 packet[2] = (byte)(curSize >> 8);
                 packet[3] = (byte)(curSize & 0x00FF);
                 // Data part
-                Array.Copy(request, sourcePos, packet, 4, curSize);
+                Array.Copy(request, sourcePos, packet, S7_HEADER_SIZE, curSize);
                 sourcePos += curSize;
-                sendLen = 4 + curSize;
+                sendLen = S7_HEADER_SIZE + curSize;
 
                 // Trailer only in last packet
                 if (bytesToSend == 0)
                 {
-                    Array.Resize(ref packet, sendLen + 4); //resize only the last package to sendLen + TrailerLen
+                    Array.Resize(ref packet, sendLen + S7_TRAILER_SIZE); //resize only the last package to sendLen + TrailerLen
                     packet[sendLen] = 0x72;
                     sendLen++;
                     packet[sendLen] = protocolVersion;
@@ -350,7 +385,7 @@ namespace TKH.S7Plus.Net
                 {
                     while (!token.IsCancellationRequested)
                     {
-                        if (_client.Client.Poll(0, SelectMode.SelectRead) && _client.Client.Available == 0)
+                        if (!_client.Client.Connected)
                             throw new IOException("Connection reset.");
 
                         _stream.Update();
@@ -380,15 +415,15 @@ namespace TKH.S7Plus.Net
 
                         memoryStream.Write(buffer, 0, buffer.Length);
 
-                        if (memoryStream.Length < 4)
+                        if (memoryStream.Length < S7_HEADER_SIZE)
                         {
                             continue;
                         }
 
                         memoryStream.Position = lastPacketPos;
                         headerPositions.Add(memoryStream.Position);
-                        byte[] header = new byte[4];
-                        memoryStream.Read(header, 0, 4);
+                        byte[] header = new byte[S7_HEADER_SIZE];
+                        memoryStream.Read(header, 0, S7_HEADER_SIZE);
 
                         if (header[0] != 0x72)
                             throw new InvalidDataException("Invalid S7CommPlus header");
@@ -398,7 +433,7 @@ namespace TKH.S7Plus.Net
 
                         UInt16 s7HeaderLength = (UInt16)((header[2] << 8) | header[3]);
                         totalS7Size += s7HeaderLength;
-                        if (memoryStream.Length < totalS7Size + 4 + (headerPositions.Count * 4))
+                        if (memoryStream.Length < totalS7Size + S7_TRAILER_SIZE + (headerPositions.Count * S7_HEADER_SIZE))
                         {
                             lastPacketPos = memoryStream.Length;
                             memoryStream.Position = memoryStream.Length; // Move to the end to append more data
@@ -409,8 +444,8 @@ namespace TKH.S7Plus.Net
                         int fullPacketPos = 0;
                         for (int i = 0; i < headerPositions.Count; i++)
                         {
-                            memoryStream.Position = headerPositions[i] + 4;
-                            int lengthToRead = (i < headerPositions.Count - 1) ? (int)((headerPositions[i + 1] - headerPositions[i]) - 4) :
+                            memoryStream.Position = headerPositions[i] + S7_HEADER_SIZE;
+                            int lengthToRead = (i < headerPositions.Count - 1) ? (int)((headerPositions[i + 1] - headerPositions[i]) - S7_HEADER_SIZE) :
                                 (int)(totalS7Size - headerPositions[i]);
                             memoryStream.Read(fullPacket, fullPacketPos, lengthToRead);
                             fullPacketPos += lengthToRead;
@@ -434,10 +469,17 @@ namespace TKH.S7Plus.Net
                     }
                 }
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, $"ReceiveLoop exception occurred attempting to reconnect...");
-                await Reconnect();
+                if (IsConnected)
+                {
+                    _logger.LogError(ex, $"ReceiveLoop exception occurred attempting to reconnect...");
+                    _ = Reconnect();
+                }
+                else
+                {
+                    _logger.LogError(ex, "ReceiveLoop exception occurred.");
+                }
             }
         }
 
@@ -468,7 +510,8 @@ namespace TKH.S7Plus.Net
 
         public void Dispose()
         {
-            _client?.Dispose();
+            CleanupResources();
+            _lock.Dispose();
         }
     }
 }

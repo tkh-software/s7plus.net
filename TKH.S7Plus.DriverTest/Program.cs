@@ -7,6 +7,7 @@ using TKH.S7Plus.Net.S7Variables;
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 using var loggerFactory = LoggerFactory.Create(builder =>
 {
@@ -44,5 +45,5 @@ foreach (VariableInfo info in variableInfos)
     Console.WriteLine($"Symbol: {info.Name}");
 }
 
-await driver.Disconnect();
+driver.Disconnect();
 Console.WriteLine("Goodbye World!");
