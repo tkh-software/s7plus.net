@@ -34,7 +34,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TKH.S7Plus.Net
 {
-    public class S7Driver : IS7Driver
+    public class S7Driver : IS7Driver, IDisposable
     {
         private readonly S7Client _client;
         private readonly ILogger _logger;
@@ -108,6 +108,11 @@ namespace TKH.S7Plus.Net
             int maxWrite = ((S7VariableDInt)response.Values.Skip(1).First().Value).Value;
 
             _systemInfo = new SystemInfo(maxRead, maxWrite);
+        }
+
+        public void Dispose()
+        {
+            _client.Dispose();
         }
     }
 }

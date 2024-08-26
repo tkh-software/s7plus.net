@@ -64,7 +64,7 @@ dotnet add package TKH.S7Plus.Net
 - Disconnect from the PLC:
 
   ```csharp
-  await driver.Disconnect();
+  driver.Disconnect();
   ```
 
 ## Commercially Supported
