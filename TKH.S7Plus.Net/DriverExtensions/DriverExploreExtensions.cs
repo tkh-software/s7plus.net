@@ -74,6 +74,9 @@ namespace TKH.S7Plus.Net.DriverExtensions
                 if (area != Datablock.Area)
                     continue;
 
+                if (!obj.Attributes.ContainsKey(S7Ids.ObjectVariableTypeName))
+                    continue;
+
                 S7VariableWString name = (S7VariableWString)obj.Attributes[S7Ids.ObjectVariableTypeName];
                 Datablock db = new Datablock(obj.RelationId, obj.RelationId, 0, name.Value);
                 result.Add(db);
@@ -86,13 +89,14 @@ namespace TKH.S7Plus.Net.DriverExtensions
             GetMultiVariablesRequest getMultiVariablesRequest = new GetMultiVariablesRequest(ProtocolVersion.V2, addresses);
             GetMultiVariablesResponse getMultiVariablesResponse = await driver.GetMultiVariables(getMultiVariablesRequest);
 
-            for (int i = 1; i <= getMultiVariablesResponse.Values.Count; i++)
+            foreach (var value in getMultiVariablesResponse.Values)
             {
-                if (getMultiVariablesResponse.ErrorValues.ContainsKey((UInt32)i))
+                if (getMultiVariablesResponse.ErrorValues.ContainsKey(value.Key))
                     continue;
 
-                S7VariableRID typeInfoRelId = (S7VariableRID)getMultiVariablesResponse.Values[(UInt32)i];
-                result[i - 1].BlockTypeInfoRelId = typeInfoRelId.Value;
+                Datablock? db = result.Find(d => d.BlockRelId == value.Key);
+                if (db != null)
+                    db.BlockTypeInfoRelId = ((S7VariableRID)value.Value).Value;
             }
 
             result.RemoveAll(db => db.BlockTypeInfoRelId == 0);
@@ -162,11 +166,11 @@ namespace TKH.S7Plus.Net.DriverExtensions
                 browser.AddRootNode(db.BlockName, db.BlockRelId, db.BlockTypeInfoRelId);
             }
 
-            browser.AddRootNode("I", S7Ids.NativeObjectsTheIAreaRid, 0x90010000);
-            browser.AddRootNode("Q", S7Ids.NativeObjectsTheQAreaRid, 0x90020000);
-            browser.AddRootNode("M", S7Ids.NativeObjectsTheMAreaRid, 0x90030000);
-            browser.AddRootNode("S7Timers", S7Ids.NativeObjectsTheS7TimersRid, 0x90050000);
-            browser.AddRootNode("S7Counters", S7Ids.NativeObjectsTheS7CountersRid, 0x90060000);
+            browser.AddRootNode("I", S7Ids.NativeObjectsTheIAreaRid, INPUT_TI_RID);
+            browser.AddRootNode("Q", S7Ids.NativeObjectsTheQAreaRid, OUTPUT_TI_RID);
+            browser.AddRootNode("M", S7Ids.NativeObjectsTheMAreaRid, MARKER_TI_RID);
+            browser.AddRootNode("S7Timers", S7Ids.NativeObjectsTheS7TimersRid, TIMER_TI_RID);
+            browser.AddRootNode("S7Counters", S7Ids.NativeObjectsTheS7CountersRid, COUNTER_TI_RID);
 
             return browser.GetAllVariables();
         }
