@@ -31,10 +31,13 @@ namespace TKH.S7Plus.Net
     public interface IS7Driver
     {
         void SetTimeout(TimeSpan timeout);
+        void EnableAutoReconnect(bool enable, uint maxAttempts = 0, TimeSpan delay = default);
         Task Connect(string host, int port);
         void Disconnect();
 
         bool IsConnected { get; }
+        bool IsConnecting { get; }
+
         SystemInfo SystemInfo { get; }
 
         Task<GetMultiVariablesResponse> GetMultiVariables(GetMultiVariablesRequest request);

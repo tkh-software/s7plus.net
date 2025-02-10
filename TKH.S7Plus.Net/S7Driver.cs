@@ -47,11 +47,18 @@ namespace TKH.S7Plus.Net
         }
 
         public bool IsConnected => _client.IsConnected;
+        public bool IsConnecting => _client.IsConnecting;
+
         public SystemInfo SystemInfo => _systemInfo;
 
         public void SetTimeout(TimeSpan timeout)
         {
             _client.SetTimeout(timeout);
+        }
+
+        public void EnableAutoReconnect(bool enable, uint maxAttempts = 0, TimeSpan delay = default)
+        {
+            _client.EnableAutoReconnect(enable, maxAttempts, delay);
         }
 
         public async Task Connect(string host, int port)

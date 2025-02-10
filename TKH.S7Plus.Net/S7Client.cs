@@ -39,7 +39,6 @@ namespace TKH.S7Plus.Net
 {
     public class S7Client : IDisposable
     {
-        private const int MAX_CONNECTION_ATTEMPTS = 5;
         private const UInt32 SESSION_CLIENT_RID = 0x80c3c901;
         private const int S7_HEADER_SIZE = 4;
         private const int S7_TRAILER_SIZE = 4;
@@ -55,7 +54,11 @@ namespace TKH.S7Plus.Net
         private string _host;
         private int _port;
         private TimeSpan _timeout;
-        private SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+        private readonly object _lock = new object();
+
+        private uint _maxReconnectAttempts = 0;
+        private TimeSpan _reconnectDelay = TimeSpan.Zero;
+        private bool _autoReconnect = false;
 
         private readonly ILogger _logger;
 
@@ -70,6 +73,7 @@ namespace TKH.S7Plus.Net
         }
 
         public bool IsConnected { get; private set; }
+        public bool IsConnecting { get; private set; }
 
         public void SetTimeout(TimeSpan timeout)
         {
@@ -79,9 +83,17 @@ namespace TKH.S7Plus.Net
             if (timeout.TotalMilliseconds < 0)
                 throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout is negative");
 
-            _lock.Wait();
-            _timeout = timeout;
-            _lock.Release();
+            lock(_lock)
+            {
+                _timeout = timeout;
+            }
+        }
+
+        public void EnableAutoReconnect(bool enable, uint maxAttempts = 0, TimeSpan delay = default)
+        {
+            _autoReconnect = enable;
+            _maxReconnectAttempts = maxAttempts == 0 ? uint.MaxValue : maxAttempts;
+            _reconnectDelay = delay;
         }
 
         public async Task Connect(string host, int port)
@@ -89,12 +101,14 @@ namespace TKH.S7Plus.Net
             if (IsConnected)
                 throw new InvalidOperationException("Already connected.");
 
-            _lock.Wait();
+            if (IsConnecting)
+                throw new InvalidOperationException("Already connecting.");
 
-            _host = host;
-            _port = port;
-
-            _lock.Release();
+            lock (_lock)
+            {
+                _host = host;
+                _port = port;
+            }
 
             await AttemptConnection();
             IsConnected = true;
@@ -103,6 +117,7 @@ namespace TKH.S7Plus.Net
         private async Task AttemptConnection()
         {
             _logger.LogInformation($"Attempting to connect to {_host}:{_port}...");
+            IsConnecting = true;
 
             using (var cts = new CancellationTokenSource(_timeout))
             {
@@ -126,9 +141,11 @@ namespace TKH.S7Plus.Net
                     await InitializeS7Session();
 
                     _logger.LogInformation("Connected successfully with session ID {0} and session ID2 {1}", _sessionId, _sessionId2);
+                    IsConnecting = false;
                 }
                 catch (OperationCanceledException)
                 {
+                    IsConnecting = false;
                     throw new TimeoutException("The connection attempt timed out.");
                 }
             }
@@ -232,13 +249,26 @@ namespace TKH.S7Plus.Net
                 _logger.LogError(ex, "Failed to reset requests.");
             }
 
+            if(!_autoReconnect)
+            {
+                CleanupResources();
+                _logger.LogWarning("Auto-reconnect is disabled. Connection lost.");
+                return;
+            }
+
             int attempt = 0;
 
-            while (attempt < MAX_CONNECTION_ATTEMPTS)
+            while (attempt < _maxReconnectAttempts)
             {
+                if(IsConnecting || IsConnected)
+                {
+                    _logger.LogWarning("Reconnection attempt aborted. Already connected or connecting.");
+                    return;
+                }
+
                 try
                 {
-                    _logger.LogDebug($"Attempting to reconnect... (Attempt {attempt + 1}/{MAX_CONNECTION_ATTEMPTS})");
+                    _logger.LogDebug($"Attempting to reconnect... (Attempt {attempt + 1}/{_maxReconnectAttempts})");
 
                     CleanupResources();
 
@@ -250,11 +280,11 @@ namespace TKH.S7Plus.Net
                 {
                     _logger.LogWarning($"Reconnect attempt {attempt + 1} failed: {ex.Message}");
                     attempt++;
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
+                    await Task.Delay(_reconnectDelay);
                 }
             }
 
-            _logger.LogError("Failed to reconnect after {0} attempts", MAX_CONNECTION_ATTEMPTS);
+            _logger.LogError("Failed to reconnect after {0} attempts", _maxReconnectAttempts);
         }
 
         private void CleanupResources()
@@ -294,19 +324,20 @@ namespace TKH.S7Plus.Net
 
         private Task<byte[]> SendInternal(IS7Request request)
         {
-            _lock.Wait();
+            lock (_lock)
+            {
 
-            _sequenceNumber++;
-            if (_sequenceNumber == UInt16.MaxValue)
-                _sequenceNumber = 1;
+                _sequenceNumber++;
+                if (_sequenceNumber == UInt16.MaxValue)
+                    _sequenceNumber = 1;
 
-            request.SequenceNumber = _sequenceNumber;
-            request.SessionId = _sessionId;
+                request.SequenceNumber = _sequenceNumber;
+                request.SessionId = _sessionId;
 
-            if (request.WithIntegrityId)
-                request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
+                if (request.WithIntegrityId)
+                    request.IntegrityId = GetNextIntegrityId(request.FunctionCode);
 
-            _lock.Release();
+            }
 
             var buffer = new MemoryStream();
             request.Serialize(buffer);
@@ -511,7 +542,6 @@ namespace TKH.S7Plus.Net
         public void Dispose()
         {
             CleanupResources();
-            _lock.Dispose();
         }
     }
 }
