@@ -78,25 +78,38 @@ namespace TKH.S7Plus.Net.DriverExtensions
                     continue;
 
                 S7VariableWString name = (S7VariableWString)obj.Attributes[S7Ids.ObjectVariableTypeName];
-                Datablock db = new Datablock(obj.RelationId, obj.RelationId, 0, name.Value);
+                Datablock db = new Datablock(obj.RelationId & 0xffff, obj.RelationId, 0, name.Value);
                 result.Add(db);
+
+                if(db.BlockNumber == 0)
+                    continue;
 
                 S7Address address = new S7Address(db.BlockRelId, S7Ids.DBValueActual);
                 address.Offsets.Add(1);
                 addresses.Add(address);
             }
 
-            GetMultiVariablesRequest getMultiVariablesRequest = new GetMultiVariablesRequest(ProtocolVersion.V2, addresses);
-            GetMultiVariablesResponse getMultiVariablesResponse = await driver.GetMultiVariables(getMultiVariablesRequest);
-
-            foreach (var value in getMultiVariablesResponse.Values)
+            int counter = -1;
+            foreach (List<IS7Address> chunk in addresses.ChunkBy(driver.SystemInfo.MaxReadVariables))
             {
-                if (getMultiVariablesResponse.ErrorValues.ContainsKey(value.Key))
-                    continue;
+                GetMultiVariablesRequest getMultiVariablesRequest = new GetMultiVariablesRequest(ProtocolVersion.V2, chunk);
+                GetMultiVariablesResponse getMultiVariablesResponse = await driver.GetMultiVariables(getMultiVariablesRequest);
 
-                Datablock? db = result.Find(d => d.BlockRelId == value.Key);
-                if (db != null)
-                    db.BlockTypeInfoRelId = ((S7VariableRID)value.Value).Value;
+                if (getMultiVariablesResponse.ErrorValues.Any(v => v.Value > 0))
+                    throw new Exception("Error reading variables: " + string.Join(",", getMultiVariablesResponse.ErrorValues.Values));
+
+                foreach (var value in getMultiVariablesResponse.Values)
+                {
+                    counter++;
+                    if (getMultiVariablesResponse.ErrorValues[value.Key] > 0)
+                        continue;
+
+                    uint accessArea = addresses[counter].AccessArea;
+
+                    Datablock? db = result.Find(d => d.BlockRelId == accessArea);
+                    if (db != null)
+                        db.BlockTypeInfoRelId = ((S7VariableRID)value.Value!).Value;
+                }
             }
 
             result.RemoveAll(db => db.BlockTypeInfoRelId == 0);

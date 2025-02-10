@@ -54,10 +54,10 @@ namespace TKH.S7Plus.Net.DriverExtensions
                 GetMultiVariablesRequest request = new GetMultiVariablesRequest(chunk);
                 GetMultiVariablesResponse response = await driver.GetMultiVariables(request);
 
-                if (response.ErrorValues.Any())
+                if (response.ErrorValues.Any(v => v.Value > 0))
                     throw new Exception("Error reading variables: " + string.Join(",", response.ErrorValues.Values));
 
-                result.AddRange(response.Values.Values);
+                result.AddRange(response.Values.Values!);
             }
 
             return result;

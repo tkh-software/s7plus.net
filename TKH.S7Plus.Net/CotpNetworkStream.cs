@@ -37,6 +37,7 @@ namespace TKH.S7Plus.Net
         private readonly ConcurrentQueue<byte[]> _writeBuffer = new ConcurrentQueue<byte[]>();
         private bool _ssl = false;
         private bool _handshaking = false;
+        private bool _sslBusy = false;
 
         public CotpNetworkStream(NetworkStream networkStream)
         {
@@ -103,10 +104,11 @@ namespace TKH.S7Plus.Net
                 }
             }
 
-            if (_writeBuffer.TryDequeue(out byte[] bufferData))
+            if (!_sslBusy && _writeBuffer.TryDequeue(out byte[] bufferData))
             {
                 if (_ssl)
                 {
+                    _sslBusy = true;
                     _sslClientProtocol.WriteApplicationData(bufferData, 0, bufferData.Length);
                 }
                 else
@@ -119,6 +121,7 @@ namespace TKH.S7Plus.Net
             {
                 byte[] sslData = new byte[_sslClientProtocol.GetAvailableOutputBytes()];
                 _sslClientProtocol.ReadOutput(sslData, 0, sslData.Length);
+                _sslBusy = false;
                 WriteCotp(sslData, 0, sslData.Length);
             }
         }
@@ -187,7 +190,9 @@ namespace TKH.S7Plus.Net
 
         public void SendPacket(byte[] data)
         {
-            _writeBuffer.Enqueue(data);
+            byte[] buffer = new byte[data.Length];
+            Array.Copy(data, buffer, data.Length);
+            _writeBuffer.Enqueue(buffer);
         }
 
         public byte[] ReceivePacket()

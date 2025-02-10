@@ -38,7 +38,7 @@ namespace TKH.S7Plus.Net.Responses
 
         public byte TransportFlags { get; private set; }
         public UInt64 ReturnValue { get; private set; }
-        public Dictionary<UInt32, S7VariableBase> Values { get; } = new Dictionary<UInt32, S7VariableBase>();
+        public Dictionary<UInt32, S7VariableBase?> Values { get; } = new Dictionary<UInt32, S7VariableBase?>();
         public Dictionary<UInt32, UInt64> ErrorValues { get; } = new Dictionary<UInt32, UInt64>();
 
         public static GetMultiVariablesResponse Deserialize(Stream buffer)
@@ -57,6 +57,7 @@ namespace TKH.S7Plus.Net.Responses
             {
                 S7VariableBase variable = S7VariableBase.Deserialize(buffer);
                 response.Values.Add(valueId, variable);
+                response.ErrorValues.Add(valueId, 0);
                 valueId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
             }
 
@@ -65,6 +66,7 @@ namespace TKH.S7Plus.Net.Responses
             {
                 UInt64 errorValue = S7VlqValueDecoder.DecodeUInt64Vlq(buffer);
                 response.ErrorValues.Add(errorId, errorValue);
+                response.Values.Add(errorId, null);
                 errorId = S7VlqValueDecoder.DecodeUInt32Vlq(buffer);
             }
 
