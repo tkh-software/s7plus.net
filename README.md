@@ -3,6 +3,9 @@
 # S7Plus.Net
 
 S7Plus.NET is a .NET library for communicating with Siemens S7-1200 and S7-1500 PLCs using the extended S7 protocol.
+The extended S7 protocol allows access to "optimized" datablocks.
+For this to work you need to enable "Secure PG/PC and HMI Communication".
+
 The library is based on the excellent work of Thomas Wiens in the S7CommPlusDriver project.
 (https://github.com/thomas-v2/S7CommPlusDriver)
 
