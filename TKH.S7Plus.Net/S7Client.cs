@@ -37,7 +37,7 @@ using System.Threading.Tasks;
 
 namespace TKH.S7Plus.Net
 {
-    public class S7Client : IDisposable
+    public class S7Client : IS7Client, IDisposable
     {
         private const UInt32 SESSION_CLIENT_RID = 0x80c3c901;
         private const int S7_HEADER_SIZE = 4;

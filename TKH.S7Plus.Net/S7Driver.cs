@@ -21,29 +21,38 @@
 #endregion
 
 using Microsoft.Extensions.Logging;
-using TKH.S7Plus.Net.Requests;
-using TKH.S7Plus.Net.Responses;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using TKH.S7Plus.Net.Models;
-using System.Collections.Generic;
+using TKH.S7Plus.Net.Requests;
+using TKH.S7Plus.Net.Responses;
 using TKH.S7Plus.Net.S7Variables;
-using System.Linq;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TKH.S7Plus.Net
 {
     public class S7Driver : IS7Driver, IDisposable
     {
-        private readonly S7Client _client;
+        private readonly IS7Client _client;
         private readonly ILogger _logger;
+        private bool _customClient;
         private SystemInfo _systemInfo = new SystemInfo();
 
         public S7Driver(ILogger? logger = null)
         {
             _logger = logger ?? new NullLogger<S7Driver>();
             _client = new S7Client(logger);
+            _customClient = false;
+        }
+
+        public S7Driver(IS7Client customClient, ILogger? logger = null)
+        {
+            _logger = logger ?? new NullLogger<S7Driver>();
+            _client = customClient;
+            _customClient = true;
         }
 
         public bool IsConnected => _client.IsConnected;
@@ -119,7 +128,11 @@ namespace TKH.S7Plus.Net
 
         public void Dispose()
         {
-            _client.Dispose();
+            if (_customClient)
+                return;
+
+            if (_client is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 }
