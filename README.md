@@ -70,11 +70,26 @@ dotnet add package TKH.S7Plus.Net
   driver.Disconnect();
   ```
 
-## Commercially Supported
-
-This library is commercially supported by [TKH Software](https://tkh-software.com/).
-Don't hesitate contacting us if you're building something large, in need of advice or having other business inquiries in mind.
-
 ## License
 
 This project is licensed under the [LGPL-3.0 License](./LICENSE).
+
+## Disclaimer
+
+### Use at Your Own Risk
+
+This library is provided "as is" without any warranties.
+Use of this library in industrial environments is at your own risk.
+The author assumes no liability for damage resulting from incorrect use.
+
+Only use with systems you are authorized to access.
+Do not bypass security mechanisms.
+
+### Protocol
+
+This project is an independent implementation based solely on
+publicly available information, academic research, and
+observed network behavior for the purpose of interoperability.
+
+It is not affiliated with, endorsed by, or connected to Siemens AG.
+All trademarks belong to their respective owners.
