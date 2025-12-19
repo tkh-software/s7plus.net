@@ -4,9 +4,7 @@
  * 
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
  *
- * This file is part of the S7Plus.Net project, which is based on the
- * S7CommPlusDriver project by Thomas Wiens
- * (https://github.com/thomas-v2/S7CommPlusDriver).
+ * This file is part of the S7Plus.Net project.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
