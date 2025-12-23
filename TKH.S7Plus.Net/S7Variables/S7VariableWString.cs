@@ -25,6 +25,7 @@ using TKH.S7Plus.Net.Constants;
 using TKH.S7Plus.Net.Helpers;
 using System;
 using System.IO;
+using System.Text;
 
 namespace TKH.S7Plus.Net.S7Variables
 {
@@ -50,8 +51,10 @@ namespace TKH.S7Plus.Net.S7Variables
         public override int Serialize(Stream buffer)
         {
             int length = base.Serialize(buffer);
-            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (uint)Value.Length);
-            length += S7ValueEncoder.EncodeString(buffer, Value);
+
+            byte[] utf8 = Encoding.UTF8.GetBytes(Value);
+            length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (uint)utf8.Length);
+            length += S7ValueEncoder.EncodeString(buffer, utf8);
             return length;
         }
 

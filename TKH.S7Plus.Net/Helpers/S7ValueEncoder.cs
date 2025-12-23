@@ -101,6 +101,12 @@ namespace TKH.S7Plus.Net.Helpers
             return bytes.Length;
         }
 
+        public static int EncodeString(Stream buffer, byte[] utf8)
+        {
+            buffer.Write(utf8, 0, utf8.Length);
+            return utf8.Length;
+        }
+
         public static int EncodeObjectQualifier(Stream buffer)
         {
             int length = 0;
