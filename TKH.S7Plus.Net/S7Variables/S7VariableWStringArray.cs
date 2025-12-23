@@ -24,6 +24,7 @@
 using TKH.S7Plus.Net.Helpers;
 using System;
 using System.IO;
+using System.Text;
 
 namespace TKH.S7Plus.Net.S7Variables
 {
@@ -55,8 +56,9 @@ namespace TKH.S7Plus.Net.S7Variables
 
             foreach (string item in Value)
             {
-                length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (uint)item.Length);
-                length += S7ValueEncoder.EncodeString(buffer, item);
+                byte[] utf8 = Encoding.UTF8.GetBytes(item);
+                length += S7VlqValueEncoder.EncodeUInt32Vlq(buffer, (uint)utf8.Length);
+                length += S7ValueEncoder.EncodeString(buffer, utf8);
             }
 
             return length;

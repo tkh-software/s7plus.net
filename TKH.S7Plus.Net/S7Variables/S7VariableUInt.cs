@@ -21,9 +21,9 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Helpers;
 using System;
 using System.IO;
+using TKH.S7Plus.Net.Helpers;
 
 namespace TKH.S7Plus.Net.S7Variables
 {
@@ -35,6 +35,42 @@ namespace TKH.S7Plus.Net.S7Variables
         {
             var baseArray = DeserializeBase(buffer, flags, disableVlq);
             return new S7VariableUIntArray(baseArray.Value);
+        }
+
+        public static S7VariableUIntArray FromString(string str, int arraySize)
+        {
+            if (arraySize <= 2)
+                throw new ArgumentOutOfRangeException(nameof(arraySize), "array size must be more than 2 (check PLC for correct size)");
+
+            UInt16[] value = new UInt16[arraySize];
+            value[0] = (UInt16)(arraySize - 2);
+            value[1] = (UInt16)(str.Length);
+
+            for (int i = 0; i < str.Length && i < arraySize - 2; i++)
+                value[i + 2] = (UInt16)(str[i]);
+
+            if (str.Length < arraySize - 3)
+                value[str.Length + 2] = 0;
+
+            return new S7VariableUIntArray(value);
+        }
+
+        public string ConvertToString()
+        {
+            if (Value?.Length < 3)
+                return string.Empty;
+
+            char[] chars = new char[Value!.Length - 2];
+            int i = 0;
+            for (; i < Value.Length - 2; i++)
+            {
+                if (Value[i + 2] == 0 || i >= Value[1])
+                    break;
+
+                chars[i] = (char)Value[i + 2];
+            }
+
+            return new string(chars.AsSpan(0, i));
         }
     }
 

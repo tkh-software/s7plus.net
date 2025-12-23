@@ -39,7 +39,7 @@ namespace TKH.S7Plus.Net.DriverExtensions
             GetMultiVariablesRequest request = new GetMultiVariablesRequest(new List<IS7Address> { address });
             GetMultiVariablesResponse response = await driver.GetMultiVariables(request);
 
-            if (response.ErrorValues.Any())
+            if (response.ErrorValues.Any(v => v.Value != 0))
                 throw new Exception("Error reading variable: " + response.ErrorValues.First().Value);
 
             return response.Values.Values.FirstOrDefault() ?? throw new Exception("Variable not found");

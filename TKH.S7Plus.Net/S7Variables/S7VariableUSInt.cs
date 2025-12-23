@@ -21,8 +21,11 @@
  /****************************************************************************/
 #endregion
 
-using TKH.S7Plus.Net.Helpers;
+using System;
 using System.IO;
+using System.Linq;
+using System.Text;
+using TKH.S7Plus.Net.Helpers;
 
 namespace TKH.S7Plus.Net.S7Variables
 {
@@ -34,6 +37,35 @@ namespace TKH.S7Plus.Net.S7Variables
         {
             var baseArray = DeserializeBase(buffer, flags, disableVlq);
             return new S7VariableUSIntArray(baseArray.Value);
+        }
+        public static S7VariableUSIntArray FromString(string str, int arraySize)
+        {
+            if (arraySize <= 2)
+                throw new ArgumentOutOfRangeException(nameof(arraySize), "array size must be more than 2 (check PLC for correct size)");
+
+            Encoding encoding = Encoding.GetEncoding("ISO-8859-1");
+            byte[] bytes = encoding.GetBytes(str);
+
+            byte[] value = new byte[arraySize];
+            value[0] = (byte)(arraySize - 2);
+            value[1] = (byte)(bytes.Length);
+
+            for (int i = 0; i < bytes.Length && i < arraySize - 2; i++)
+                value[i + 2] = (byte)(bytes[i]);
+
+            if (bytes.Length < arraySize - 3)
+                value[bytes.Length + 2] = 0;
+
+            return new S7VariableUSIntArray(value);
+        }
+
+        public string ConvertToString()
+        {
+            if (Value?.Length <= 3)
+                return string.Empty;
+
+            Encoding encoding = Encoding.GetEncoding("ISO-8859-1");
+            return encoding.GetString(Value!.Skip(2).Take(Value![1]).TakeWhile(v => v != 0).ToArray());
         }
     }
 
