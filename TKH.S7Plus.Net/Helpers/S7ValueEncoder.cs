@@ -1,7 +1,7 @@
 #region License
 /******************************************************************************
  * S7Plus.Net
- * 
+ *
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
  * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
@@ -76,16 +76,24 @@ namespace TKH.S7Plus.Net.Helpers
 
         public static int EncodeFloat(Stream buffer, float value)
         {
-            byte[] bytes = BitConverter.GetBytes(value);
-            buffer.Write(bytes, 0, bytes.Length);
-            return bytes.Length;
+            Span<byte> bytes = stackalloc byte[4];
+            BitConverter.TryWriteBytes(bytes, value);
+
+            bytes.Reverse();
+
+            buffer.Write(bytes);
+            return 4;
         }
 
         public static int EncodeDouble(Stream buffer, double value)
         {
-            byte[] bytes = BitConverter.GetBytes(value);
-            buffer.Write(bytes, 0, bytes.Length);
-            return bytes.Length;
+            Span<byte> bytes = stackalloc byte[8];
+            BitConverter.TryWriteBytes(bytes, value);
+
+            bytes.Reverse();
+
+            buffer.Write(bytes);
+            return 8;
         }
 
         public static int EncodeOctets(Stream buffer, byte[] value)

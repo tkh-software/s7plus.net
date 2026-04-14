@@ -91,21 +91,23 @@ namespace TKH.S7Plus.Net.Tests.Helpers
         [TestMethod]
         public void DecodeFloat_ValidInput_ReturnsExpectedValue()
         {
-            using (var stream = new MemoryStream(BitConverter.GetBytes(123.456f)))
-            {
-                float result = S7ValueDecoder.DecodeFloat(stream);
-                Assert.AreEqual(123.456f, result);
-            }
+            byte[] bytes = BitConverter.GetBytes(123.456f);
+            Array.Reverse(bytes);
+
+            using var stream = new MemoryStream(bytes);
+            float result = S7ValueDecoder.DecodeFloat(stream);
+            Assert.AreEqual(123.456f, result);
         }
 
         [TestMethod]
         public void DecodeDouble_ValidInput_ReturnsExpectedValue()
         {
-            using (var stream = new MemoryStream(BitConverter.GetBytes(123.456)))
-            {
-                double result = S7ValueDecoder.DecodeDouble(stream);
-                Assert.AreEqual(123.456, result);
-            }
+            byte[] bytes = BitConverter.GetBytes(123.456);
+            Array.Reverse(bytes);
+
+            using var stream = new MemoryStream(bytes);
+            double result = S7ValueDecoder.DecodeDouble(stream);
+            Assert.AreEqual(123.456, result);
         }
 
         [TestMethod]
