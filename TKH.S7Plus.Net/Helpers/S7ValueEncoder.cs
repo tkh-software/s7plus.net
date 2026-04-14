@@ -79,8 +79,7 @@ namespace TKH.S7Plus.Net.Helpers
             Span<byte> bytes = stackalloc byte[4];
             BitConverter.TryWriteBytes(bytes, value);
 
-            if (BitConverter.IsLittleEndian)
-                bytes.Reverse();
+            bytes.Reverse();
 
             buffer.Write(bytes);
             return 4;
@@ -91,8 +90,7 @@ namespace TKH.S7Plus.Net.Helpers
             Span<byte> bytes = stackalloc byte[8];
             BitConverter.TryWriteBytes(bytes, value);
 
-            if (BitConverter.IsLittleEndian)
-                bytes.Reverse();
+            bytes.Reverse();
 
             buffer.Write(bytes);
             return 8;

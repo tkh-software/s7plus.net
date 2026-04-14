@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TKH.S7Plus.Net.Helpers;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace TKH.S7Plus.Net.Tests.Helpers
 {
@@ -92,7 +93,7 @@ namespace TKH.S7Plus.Net.Tests.Helpers
             {
                 int bytesWritten = S7ValueEncoder.EncodeFloat(stream, 123.456f);
                 Assert.AreEqual(4, bytesWritten);
-                CollectionAssert.AreEqual(BitConverter.GetBytes(123.456f), stream.ToArray());
+                CollectionAssert.AreEqual(BitConverter.GetBytes(123.456f).Reverse().ToArray(), stream.ToArray());
             }
         }
 
@@ -103,7 +104,7 @@ namespace TKH.S7Plus.Net.Tests.Helpers
             {
                 int bytesWritten = S7ValueEncoder.EncodeDouble(stream, 123.456);
                 Assert.AreEqual(8, bytesWritten);
-                CollectionAssert.AreEqual(BitConverter.GetBytes(123.456), stream.ToArray());
+                CollectionAssert.AreEqual(BitConverter.GetBytes(123.456).Reverse().ToArray(), stream.ToArray());
             }
         }
 

@@ -90,8 +90,7 @@ namespace TKH.S7Plus.Net.Helpers
             if (buffer.Read(bytes) != 4)
                 throw new EndOfStreamException();
 
-            if (BitConverter.IsLittleEndian)
-                bytes.Reverse();
+            bytes.Reverse();
 
             return BitConverter.ToSingle(bytes);
         }
@@ -103,8 +102,7 @@ namespace TKH.S7Plus.Net.Helpers
             if (buffer.Read(bytes) != 8)
                 throw new EndOfStreamException();
 
-            if (BitConverter.IsLittleEndian)
-                bytes.Reverse();
+            bytes.Reverse();
 
             return BitConverter.ToDouble(bytes);
         }
