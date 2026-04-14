@@ -1,7 +1,7 @@
 #region License
 /******************************************************************************
  * S7Plus.Net
- * 
+ *
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
  * Copyright (C) 2023 Thomas Wiens, th.wiens@gmx.de
  *
@@ -85,16 +85,28 @@ namespace TKH.S7Plus.Net.Helpers
 
         public static float DecodeFloat(Stream buffer)
         {
-            byte[] bytes = new byte[4];
-            buffer.Read(bytes, 0, 4);
-            return BitConverter.ToSingle(bytes, 0);
+            Span<byte> bytes = stackalloc byte[4];
+
+            if (buffer.Read(bytes) != 4)
+                throw new EndOfStreamException();
+
+            if (BitConverter.IsLittleEndian)
+                bytes.Reverse();
+
+            return BitConverter.ToSingle(bytes);
         }
 
         public static double DecodeDouble(Stream buffer)
         {
-            byte[] bytes = new byte[8];
-            buffer.Read(bytes, 0, 8);
-            return BitConverter.ToDouble(bytes, 0);
+            Span<byte> bytes = stackalloc byte[8];
+
+            if (buffer.Read(bytes) != 8)
+                throw new EndOfStreamException();
+
+            if (BitConverter.IsLittleEndian)
+                bytes.Reverse();
+
+            return BitConverter.ToDouble(bytes);
         }
 
         public static byte[] DecodeOctets(Stream buffer, int length)
