@@ -440,7 +440,9 @@ namespace TKH.S7Plus.Net
                                     timoutTask.Item2.TrySetException(new TimeoutException("Request timed out."));
                             }
 
-                            await Task.Delay(1, token);
+                            // Wait for data or a send instead of polling; wake at least every 100 ms so
+                            // request timeouts are still checked.
+                            await _stream.WaitForWorkAsync(TimeSpan.FromMilliseconds(100), token);
                             continue;
                         }
 
