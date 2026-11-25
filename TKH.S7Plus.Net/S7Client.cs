@@ -291,7 +291,7 @@ namespace TKH.S7Plus.Net
         {
             try
             {
-                _cts.Cancel();
+                _cts?.Cancel(); // null when the client never connected
                 _receiveTask?.Wait(); // Ensure the receive loop is finished
             }
             catch (Exception) { }
@@ -300,7 +300,7 @@ namespace TKH.S7Plus.Net
             _client?.Close();
             _client?.Dispose();
             _requests.Clear();
-            _cts.Dispose();
+            _cts?.Dispose();
             _integrityId = 0;
             _integrityIdSet = 0;
             _sequenceNumber = 0;
