@@ -1,7 +1,7 @@
 #region License
 /******************************************************************************
  * S7Plus.Net
- * 
+ *
  * Copyright (C) 2024 TKH Software GmbH, www.tkh-software.com
  *
  * This file is part of the S7Plus.Net project, which is based on the
@@ -440,7 +440,7 @@ namespace TKH.S7Plus.Net
                                     timoutTask.Item2.TrySetException(new TimeoutException("Request timed out."));
                             }
 
-                            await Task.Delay(TimeSpan.FromMicroseconds(10), token);
+                            await Task.Delay(1, token);
                             continue;
                         }
 
