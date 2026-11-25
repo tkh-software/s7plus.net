@@ -74,7 +74,7 @@ dotnet add package TKH.S7Plus.Net
 
 This project is licensed under the [LGPL-3.0 License](./LICENSE).
 
-A C/C++ library for commercial use is available under https://www.tkh-software.com/tkhc-s7.
+A C/C++ & C# .NET library for commercial use is available under https://www.tkh-software.com/tkhc-s7.
 
 ## Disclaimer
 
