@@ -207,12 +207,13 @@ namespace TKH.S7Plus.Net
 
         private int ReadCotp(MemoryStream buffer)
         {
+            // TCP may deliver a frame in several pieces: a single Read can return fewer bytes than requested.
             byte[] tpktHeader = new byte[4];
-            _networkStream.Read(tpktHeader, 0, tpktHeader.Length);
+            _networkStream.ReadExactly(tpktHeader, 0, tpktHeader.Length);
 
             int tpktLength = (tpktHeader[2] << 8) | tpktHeader[3];
             byte[] cotpHeader = new byte[3];
-            _networkStream.Read(cotpHeader, 0, cotpHeader.Length);
+            _networkStream.ReadExactly(cotpHeader, 0, cotpHeader.Length);
 
             if (cotpHeader[1] != 0xF0 || cotpHeader[2] != 0x80)
             {
@@ -228,7 +229,7 @@ namespace TKH.S7Plus.Net
             int bytesRead = 0;
             while (bytesRead < cotpLength)
             {
-                int read = _networkStream.Read(cotpData, 0, cotpLength - bytesRead);
+                int read = _networkStream.Read(cotpData, bytesRead, cotpLength - bytesRead);
                 if (read == 0)
                 {
                     throw new IOException("Disconnected");
