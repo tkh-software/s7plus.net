@@ -25,6 +25,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TKH.S7Plus.Net
@@ -38,6 +39,12 @@ namespace TKH.S7Plus.Net
         private bool _ssl = false;
         private bool _handshaking = false;
         private bool _sslBusy = false;
+        // Released by SendPacket so a waiting receive loop wakes up for queued data.
+        private readonly SemaphoreSlim _sendSignal = new SemaphoreSlim(0);
+        // Pending zero-byte receive (completes when the socket has data or is closed) and pending wait for a
+        // send; both are kept across calls so no completion is lost.
+        private Task? _readable;
+        private Task? _sent;
 
         public CotpNetworkStream(NetworkStream networkStream)
         {
@@ -193,6 +200,51 @@ namespace TKH.S7Plus.Net
             byte[] buffer = new byte[data.Length];
             Array.Copy(data, buffer, data.Length);
             _writeBuffer.Enqueue(buffer);
+            _sendSignal.Release();
+        }
+
+        /// <summary>
+        /// Returns when Update has work - data on the socket, a queued send, pending TLS output or a received
+        /// packet - or after maxWait at the latest, so the caller can still check request timeouts.
+        /// </summary>
+        public async Task WaitForWorkAsync(TimeSpan maxWait, CancellationToken token)
+        {
+            if (HasWork())
+                return;
+
+            // A zero-byte receive completes when data arrives without consuming it.
+            _readable ??= _networkStream.Socket.ReceiveAsync(Memory<byte>.Empty, SocketFlags.None, token).AsTask();
+            _sent ??= _sendSignal.WaitAsync(token);
+            if (!_readable.IsCompleted && !_sent.IsCompleted)
+                await Task.WhenAny(_readable, _sent, Task.Delay(maxWait, token));
+
+            if (_sent.IsCompleted)
+            {
+                Task done = _sent;
+                _sent = null;
+                await done;
+            }
+
+            if (_readable.IsCompleted)
+            {
+                Task done = _readable;
+                _readable = null;
+                // Socket errors surface here, in the receive loop, like a failed read.
+                await done;
+                // Readable without data is the end of the stream: the peer closed the connection. Without this
+                // check the loop would wake again at once, forever.
+                Socket socket = _networkStream.Socket;
+                if (!_networkStream.DataAvailable && socket.Poll(0, SelectMode.SelectRead) && socket.Available == 0)
+                    throw new IOException("Connection closed by the PLC.");
+            }
+        }
+
+        private bool HasWork()
+        {
+            return !_readBuffer.IsEmpty
+                || (!_sslBusy && !_writeBuffer.IsEmpty)
+                || ((_ssl || _handshaking) && _sslClientProtocol.GetAvailableOutputBytes() > 0)
+                || _networkStream.DataAvailable;
         }
 
         public byte[] ReceivePacket()
@@ -263,6 +315,9 @@ namespace TKH.S7Plus.Net
         public void Dispose()
         {
             _networkStream.Dispose();
+            _sendSignal.Dispose();
+            // The pending zero-byte receive fails with the closed socket; observe it.
+            _readable?.ContinueWith(t => _ = t.Exception, TaskScheduler.Default);
         }
     }
 }
