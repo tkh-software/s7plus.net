@@ -54,7 +54,8 @@ namespace TKH.S7Plus.Net.Models
                     string name = S7ValueDecoder.DecodeString(buffer, nameLength);
                     length += nameLength;
 
-                    result.Names.Add(name);
+                    // Some PLCs pad names with NUL characters; the symbol name is without them.
+                    result.Names.Add(name.TrimEnd('\0'));
 
                     // Additional 1 Byte with 0 termination of the string
                     S7ValueDecoder.DecodeByte(buffer);

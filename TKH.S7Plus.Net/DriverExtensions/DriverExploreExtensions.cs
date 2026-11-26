@@ -78,7 +78,8 @@ namespace TKH.S7Plus.Net.DriverExtensions
                     continue;
 
                 S7VariableWString name = (S7VariableWString)obj.Attributes[S7Ids.ObjectVariableTypeName];
-                Datablock db = new Datablock(obj.RelationId & 0xffff, obj.RelationId, 0, name.Value);
+                // Some PLCs pad names with NUL characters; the block name is without them.
+                Datablock db = new Datablock(obj.RelationId & 0xffff, obj.RelationId, 0, name.Value.TrimEnd('\0'));
                 result.Add(db);
 
                 if(db.BlockNumber == 0)
